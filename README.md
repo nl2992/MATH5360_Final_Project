@@ -1,5 +1,5 @@
 # MATH GR5360 Final Project
-## Trend-Following Futures Trading System
+## Trend-Following/Mean-Reverting Futures Trading System
 
 **Columbia University - Mathematical Methods in Financial Price Analysis**
 
