@@ -118,22 +118,7 @@ Secondary markets: Bitcoin (#19), Chinese futures (#20-25)
    - `03_Performance_Metrics_Extended.ipynb`
 
 5. **Check results** in the `results/` folder
-
----
-
-## Dependencies
-
-```
-numpy
-pandas
-matplotlib
-seaborn
-scipy
-numba
-tqdm
-```
-
-Install: `pip install numpy pandas matplotlib seaborn scipy numba tqdm`
+`
 
 ---
 
