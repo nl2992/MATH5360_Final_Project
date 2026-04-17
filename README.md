@@ -9,8 +9,8 @@
 
 ## Our Assignment
 
-**Primary Market:** `[TO BE ASSIGNED]`  
-**Secondary Market:** `[TBD - Bitcoin or Chinese Futures]`
+**Primary Market:** `TY`  
+**Secondary Market:** `BTC`
 
 Once we get our market assignment, we just update the `GROUP_NUMBER` variable at the top of each notebook and download the corresponding data file.
 
