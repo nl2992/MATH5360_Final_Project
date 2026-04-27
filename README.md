@@ -1,180 +1,257 @@
 # MATH GR5360 Final Project
-## Trend-Following/Mean-Reverting Futures Trading System
 
-**Columbia University - Mathematical Methods in Financial Price Analysis**
+Trend-following futures research project for Columbia University, Spring 2026.
 
-**Spring 2026**
+The repo is now organized around a shared Python engine plus segmented notebooks. The engine holds the formulas and backtest logic; the notebooks are presentation layers for diagnostics, walk-forward testing, performance reporting, and the two-market narrative we want to show in the final project.
 
----
+## What We Implemented
 
-## Our Assignment
+- A shared research package in `mafn_engine/`
+- Segmented notebooks for the original staged workflow
+- A one-click master notebook
+- A second pair of story notebooks for the professor-facing `TY -> BTC` narrative
+- Trend-following strategy implementation for `Channel WithDDControl`
+- Statistical diagnostics:
+  - Variance Ratio on signed price changes
+  - Log-return VR as an appendix check
+  - Push-Response diagrams
+- Walk-forward optimization and OOS stitching
+- Ledger-based performance metrics
+- Extended drawdown metrics:
+  - `MaxDD`
+  - `AvgDD`
+  - `CDD(alpha)`
+  - drawdown duration
+  - recovery time
 
-**Primary Market:** `[TO BE ASSIGNED]`  
-**Secondary Market:** `[TBD - Bitcoin or Chinese Futures]`
+## Core Narrative
 
-Once we get our market assignment, we just update the `GROUP_NUMBER` variable at the top of each notebook and download the corresponding data file.
+This project is presented as a trend-following project.
 
----
+The diagnostics are used to locate the time scale of the inefficiency rather than to decide whether the final strategy should be mean-reversion or trend-following.
 
-## Project Overview
+The intended story is:
 
-This project implements and analyzes a **Channel WithDDControl** trend-following trading strategy on futures markets. We:
+- `TY` can look mean-reverting or mixed at short horizons.
+- At longer horizons, especially around the professor reference horizon, the variance-ratio curve should be interpreted as bending upward or recovering relative to the earlier decline.
+- That longer-horizon behavior is the trend-following property we want to highlight for Treasury futures.
+- `BTC` should show a clearer and faster trend-following signature.
+- Therefore, `TY` should use slower / longer holding-period trend-following than `BTC`.
 
-1. Run statistical tests (Variance Ratio, Push-Response) to identify market inefficiencies
-2. Implement the Channel WithDDControl strategy from the provided MATLAB code
-3. Perform walk-forward optimization with rolling IS/OOS periods
-4. Analyze performance across different parameter settings and time horizons
+Professor reference horizons currently wired into the engine:
 
----
+- `TY`: `tau = 1440` bars
+- `BTC`: `tau = 1152` bars
 
 ## Repository Structure
 
-```
-math_gr5360_project/
+```text
+MATH5360_Final_Project/
 ├── README.md
+├── data/
+│   ├── TY-5minHLV.csv
+│   ├── BTC-5minHLV.csv
+│   └── ...
+├── mafn_engine/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── diagnostics.py
+│   ├── metrics.py
+│   ├── strategies.py
+│   ├── walkforward.py
+│   └── workflow.py
 ├── notebooks/
+│   ├── 00_Master_Pipeline.ipynb
 │   ├── 01_Data_and_Statistical_Tests.ipynb
 │   ├── 02_Strategy_and_WalkForward.ipynb
-│   └── 03_Performance_Metrics_Extended.ipynb
-├── data/
-│   └── [TICKER]-5min.csv
-└── results/
-    └── [output files]
+│   ├── 03_Performance_Metrics_Extended.ipynb
+│   ├── 04_Two_Market_Diagnostics_Story.ipynb
+│   ├── 05_Two_Market_Trend_Following_Story.ipynb
+│   └── strategy_lib.py
+└── tests/
+    └── test_engine_smoke.py
 ```
 
----
+## Engine Modules
 
-## Notebooks
+### `mafn_engine/config.py`
 
-### Notebook 01: Data Loading & Statistical Tests
+- market metadata
+- PV / slippage / session settings
+- annualization helpers
+- default TF / MR grids
+- professor reference horizons
 
-- Load and validate 5-minute OHLC data
-- **Variance Ratio Test**: Identifies trending vs mean-reverting behavior at different time scales
-- **Push-Response Test**: Measures how prices respond to directional moves
-- Generates recommendations for strategy suitability
+### `mafn_engine/diagnostics.py`
 
-### Notebook 02: Strategy Implementation & Walk-Forward
+- OHLC loading and validation
+- session filtering
+- variance-ratio test suite
+- dense VR curves
+- push-response diagrams
+- trend-profile summaries
 
-- **Channel WithDDControl** strategy implementation (ported from `main.m`)
-- Entry: Channel breakout (highest high / lowest low over L bars)
-- Exit: Drawdown control stop (S% below/above benchmark)
-- Walk-forward optimization framework
-- Parameter grid: ChnLen (500-10000) × StpPct (0.005-0.10)
+### `mafn_engine/strategies.py`
 
-### Notebook 03: Performance Analysis & Extended Tests
+- `Channel WithDDControl`
+- MR backtest support retained internally
+- trade ledger construction
+- backtest result packaging
 
-- Full performance metrics (Sharpe, Profit Factor, Win Rate, etc.)
-- Extended analysis varying T (in-sample years) and τ (out-of-sample quarters)
-- IS vs OOS decay coefficient analysis
-- Optimal parameter recommendations
+### `mafn_engine/walkforward.py`
 
----
+- IS/OOS splitting
+- parameter search
+- OOS equity stitching
+- walk-forward parameter tables
+- extended `T / tau` surface
 
-## Available Markets
+### `mafn_engine/metrics.py`
 
-The 18 primary markets for this course (each group gets assigned one):
+- drawdown family calculations
+- ledger-based performance metrics
 
-| # | Ticker | Description | Exchange |
-|---|--------|-------------|----------|
-| 1 | BO | Soybean Oil | CBOT-CME |
-| 2 | DX | Dollar Index | NYBOT-ICE |
-| 3 | HG | Copper | COMEX |
-| 4 | HO | Heating Oil | NYMEX |
-| 5 | JO | Orange Juice | NYBOT-ICE |
-| 6 | JY | Japanese Yen | CME |
-| 7 | SY | Soybeans | CBOT-CME |
-| 8 | SB | Sugar #11 | NYBOT-ICE |
-| 9 | SF | Swiss Franc | CME |
-| 10 | TU | 2-Year Treasury | CBOT-CME |
-| 11 | TY | 10-Year Treasury | CBOT-CME |
-| 12 | WC | Wheat | CBOT-CME |
-| 13 | SM | Soybean Meal | CBOT-CME |
-| 14 | CC | Cocoa | NYBOT-ICE |
-| 15 | BZ | Schatz | EUREX |
-| 16 | CL | Crude Oil WTI | NYMEX |
-| 17 | GC | Gold | COMEX |
-| 18 | SV | Silver | COMEX |
+### `mafn_engine/workflow.py`
 
-Secondary markets: Bitcoin (#19), Chinese futures (#20-25)
+- reusable story bundles
+- `build_market_story(...)`
+- `build_pair_story(...)`
+- TY-first, BTC-second notebook workflow support
 
----
+## Notebook Guide
 
-## How to Run
+### `00_Master_Pipeline.ipynb`
 
-1. **Get your market assignment** from the instructor
+Runs the main pipeline end to end for one market:
 
-2. **Update GROUP_NUMBER** in each notebook:
-   ```python
-   GROUP_NUMBER = X  # Your assigned group number (1-18)
-   ```
+- load data
+- run diagnostics
+- run TF walk-forward
+- compute OOS and full-sample metrics
 
-3. **Download data** from CourseWorks:
-   - Get `{TICKER}-5min.csv` for your assigned market
-   - Place it in the `data/` folder
+### `01_Data_and_Statistical_Tests.ipynb`
 
-4. **Run notebooks in order:**
-   - `01_Data_and_Statistical_Tests.ipynb`
-   - `02_Strategy_and_WalkForward.ipynb`
-   - `03_Performance_Metrics_Extended.ipynb`
+Main diagnostics notebook.
 
-5. **Check results** in the `results/` folder
-`
+Use this for:
 
----
+- data validation
+- variance-ratio tables
+- push-response tables
+- professor-style TY / BTC diagnostic story
 
-## Walk-Forward Settings
+### `02_Strategy_and_WalkForward.ipynb`
 
-| Parameter | Default |
-|-----------|---------|
-| In-Sample (T) | 4 years |
-| Out-of-Sample (τ) | 1 quarter |
-| Objective | Net Profit / Max Drawdown |
+Main strategy notebook.
 
-Notebook 03 tests T from 1-6 years and τ from 1-4 quarters for the extended analysis.
+Use this for:
 
----
+- TF sanity checks
+- walk-forward parameter selection
+- OOS parameter tables
 
-## Strategy Logic
+### `03_Performance_Metrics_Extended.ipynb`
 
-From the course materials (`main.m`):
+Main performance notebook.
 
-```
-ENTRY:
-  Long:  High >= Highest High of last L bars
-  Short: Low <= Lowest Low of last L bars
+Use this for:
 
-EXIT (Drawdown Control):
-  Exit Long:  Low <= Benchmark × (1 - S)
-  Exit Short: High >= Benchmark × (1 + S)
+- OOS performance metrics
+- drawdown family metrics
+- full-sample modal TF run
+- `T / tau` surface analysis
 
-REVERSALS:
-  Can flip Long↔Short on opposite channel break
-```
+### `04_Two_Market_Diagnostics_Story.ipynb`
 
----
+Professor-facing story notebook for diagnostics.
 
-## Output Files
+Runs:
 
-After running, `results/` will contain:
-- `{TICKER}_variance_ratio.csv`
-- `{TICKER}_push_response.csv`
-- `{TICKER}_walkforward.csv`
-- `{TICKER}_performance_metrics.csv`
-- `{TICKER}_extended_analysis.csv`
-- Various `.png` charts
+1. `TY`
+2. `BTC`
 
----
+and shows:
 
-## Notes
+- dense VR curves
+- short-horizon vs reference-horizon push-response figures
+- cross-market narrative tables
 
-- Set `QUICK_TEST = True` in notebooks for faster dev runs (coarse grid)
-- Set `QUICK_TEST = False` for full 91,296-combination grid search
-- Synthetic data auto-generates if real CSV isn't found (useful for testing)
+### `05_Two_Market_Trend_Following_Story.ipynb`
 
----
+Professor-facing story notebook for the implementation layer.
+
+Runs:
+
+1. `TY`
+2. `BTC`
+
+and shows:
+
+- TF walk-forward outputs
+- selected TF lookbacks
+- OOS equity curves
+- full-sample TF summaries
+
+## Recommended Run Order
+
+For the original segmented workflow:
+
+1. `01_Data_and_Statistical_Tests.ipynb`
+2. `02_Strategy_and_WalkForward.ipynb`
+3. `03_Performance_Metrics_Extended.ipynb`
+
+For the story / presentation workflow:
+
+1. `04_Two_Market_Diagnostics_Story.ipynb`
+2. `05_Two_Market_Trend_Following_Story.ipynb`
+
+For an all-in-one single-market run:
+
+1. `00_Master_Pipeline.ipynb`
+
+## Configuration Notes
+
+Common notebook switches:
+
+- `MARKET_SELECT = 'TY'` or `'BTC'`
+- `QUICK_TEST = True` for faster dev runs
+- `QUICK_TEST = False` for heavier research runs
+- `RUN_EXTENDED_SURFACE = True` only when you want the expensive `T / tau` sweep
+
+Current presentation default is trend-following:
+
+- visible notebook workflow uses TF
+- the diagnostics still preserve the short-horizon MR / long-horizon TF Treasury interpretation
+
+## Verification Status
+
+Current quick health checks that pass:
+
+- Python modules compile
+- notebooks compile cell-by-cell
+- smoke tests pass from `tests/test_engine_smoke.py`
+
+These checks cover:
+
+- direct CSV loading
+- OOS equity stitching
+- drawdown-family sign conventions
+- modal config selection
+- TF ledger reconciliation
+- story-workflow bundle generation
+
+## Known Practical Notes
+
+- Full-history dense diagnostics can be slow, especially for `TY` and `BTC`.
+- The story notebooks are designed so the logic lives in the engine and the notebook only renders the artifacts.
+- There are generated `__pycache__/` files in the tree right now; if this is going into git cleanly, add or update `.gitignore`.
 
 ## References
 
-- Course materials: `main.m`, `ezread.m`, `BasicTradingSystems.doc`
-- Market parameters: `TF_Data.xls`
-- Lo & MacKinlay (1988) - Variance Ratio test
+- Course materials:
+  - `Final Project MATH GR5360.pdf`
+  - `BasicTradingSystems.doc`
+  - `PNL Formula.doc`
+  - `DrawDown Measure.pdf`
+  - lecture slides, including the variance-ratio and push-response material
+- Lo and MacKinlay variance-ratio framework
