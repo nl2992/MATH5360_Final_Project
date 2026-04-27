@@ -229,38 +229,50 @@ Trade-level metrics should be presented as complementary diagnostics:
 
 ## Key Artifacts
 
-This published repo keeps the extracted report artifacts and representative figures.
+### Raw result folders
 
-Per-market report folders:
+- [results_cpp/TY](results_cpp/TY)
+- [results_cpp/BTC](results_cpp/BTC)
+
+### Rendered report folders
 
 - [results_cpp_report/TY](results_cpp_report/TY)
 - [results_cpp_report/BTC](results_cpp_report/BTC)
 
-Per-market markdown summaries:
+### Embedded figure gallery
 
-- [TY_reference_report.md](results_cpp_report/TY/TY_reference_report.md)
-- [BTC_reference_report.md](results_cpp_report/BTC/BTC_reference_report.md)
+These are the rendered report figures that support the main narrative:
 
-GitHub size note:
+- `TY`: slower, longer-horizon trend-following with weaker but still positive OOS behavior.
+- `BTC`: faster, stronger trend-following with much larger gross and net moves, but still meaningful OOS decay.
 
-- the very large raw bar-by-bar result CSVs are not included in this published commit because they exceed GitHub's single-file upload limit
-- the extracted tables and figures above are the report-safe summary layer built from those runs
+#### TY figures
 
-### Example figures
+| Growth of $1 | Underwater |
+|---|---|
+| ![TY growth of $1](results_cpp_report/TY/TY_reference_growth_of_1.png) | ![TY underwater](results_cpp_report/TY/TY_reference_underwater.png) |
 
-TY:
+| Costs and turnover | Reference OOS growth of $1 |
+|---|---|
+| ![TY costs and turnover](results_cpp_report/TY/TY_reference_costs_turnover.png) | ![TY reference OOS growth of $1](results_cpp_report/TY/TY_reference_oos_growth_of_1.png) |
 
-- [TY_reference_growth_of_1.png](results_cpp_report/TY/TY_reference_growth_of_1.png)
-- [TY_reference_underwater.png](results_cpp_report/TY/TY_reference_underwater.png)
-- [TY_reference_costs_turnover.png](results_cpp_report/TY/TY_reference_costs_turnover.png)
-- [TY_reference_oos_growth_of_1.png](results_cpp_report/TY/TY_reference_oos_growth_of_1.png)
+| Reference OOS underwater |
+|---|
+| ![TY reference OOS underwater](results_cpp_report/TY/TY_reference_oos_underwater.png) |
 
-BTC:
+#### BTC figures
 
-- [BTC_reference_growth_of_1.png](results_cpp_report/BTC/BTC_reference_growth_of_1.png)
-- [BTC_reference_underwater.png](results_cpp_report/BTC/BTC_reference_underwater.png)
-- [BTC_reference_costs_turnover.png](results_cpp_report/BTC/BTC_reference_costs_turnover.png)
-- [BTC_reference_oos_growth_of_1.png](results_cpp_report/BTC/BTC_reference_oos_growth_of_1.png)
+| Growth of $1 | Underwater |
+|---|---|
+| ![BTC growth of $1](results_cpp_report/BTC/BTC_reference_growth_of_1.png) | ![BTC underwater](results_cpp_report/BTC/BTC_reference_underwater.png) |
+
+| Costs and turnover | Reference OOS growth of $1 |
+|---|---|
+| ![BTC costs and turnover](results_cpp_report/BTC/BTC_reference_costs_turnover.png) | ![BTC reference OOS growth of $1](results_cpp_report/BTC/BTC_reference_oos_growth_of_1.png) |
+
+| Reference OOS underwater |
+|---|
+| ![BTC reference OOS underwater](results_cpp_report/BTC/BTC_reference_oos_underwater.png) |
 
 ## Recommended Run Order
 

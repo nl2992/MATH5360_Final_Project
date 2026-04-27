@@ -205,24 +205,66 @@ These are useful as implementation-validation / appendix results rather than the
 - Reference OOS net max drawdown: `$101,235.25`
 - Reference OOS net RoA: `3.940`
 
-## 8. Figures To Use In The Report / Slides
+## 8. Embedded Figures For The Report / Slides
 
-- TY:
-  - [TY_reference_growth_of_1.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/TY/TY_reference_growth_of_1.png)
-  - [TY_reference_underwater.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/TY/TY_reference_underwater.png)
-  - [TY_reference_costs_turnover.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/TY/TY_reference_costs_turnover.png)
-  - [TY_reference_oos_growth_of_1.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/TY/TY_reference_oos_growth_of_1.png)
-  - [TY_reference_oos_underwater.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/TY/TY_reference_oos_underwater.png)
+### TY figures
 
-- BTC:
-  - [BTC_reference_growth_of_1.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/BTC/BTC_reference_growth_of_1.png)
-  - [BTC_reference_underwater.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/BTC/BTC_reference_underwater.png)
-  - [BTC_reference_costs_turnover.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/BTC/BTC_reference_costs_turnover.png)
-  - [BTC_reference_oos_growth_of_1.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/BTC/BTC_reference_oos_growth_of_1.png)
-  - [BTC_reference_oos_underwater.png](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/BTC/BTC_reference_oos_underwater.png)
+These figures support the Treasury narrative: weaker short-horizon behavior, but a viable slower trend-following profile at longer horizons.
+
+| Growth of $1 | Underwater |
+|---|---|
+| ![TY growth of $1](TY/TY_reference_growth_of_1.png) | ![TY underwater](TY/TY_reference_underwater.png) |
+
+| Costs and turnover | Reference OOS growth of $1 |
+|---|---|
+| ![TY costs and turnover](TY/TY_reference_costs_turnover.png) | ![TY OOS growth of $1](TY/TY_reference_oos_growth_of_1.png) |
+
+| Reference OOS underwater |
+|---|
+| ![TY OOS underwater](TY/TY_reference_oos_underwater.png) |
+
+### BTC figures
+
+These figures support the Bitcoin narrative: stronger and faster trend-following, higher turnover, and larger gross and net performance swings.
+
+| Growth of $1 | Underwater |
+|---|---|
+| ![BTC growth of $1](BTC/BTC_reference_growth_of_1.png) | ![BTC underwater](BTC/BTC_reference_underwater.png) |
+
+| Costs and turnover | Reference OOS growth of $1 |
+|---|---|
+| ![BTC costs and turnover](BTC/BTC_reference_costs_turnover.png) | ![BTC OOS growth of $1](BTC/BTC_reference_oos_growth_of_1.png) |
+
+| Reference OOS underwater |
+|---|
+| ![BTC OOS underwater](BTC/BTC_reference_oos_underwater.png) |
 
 ## 9. Supporting Files
 
-- Core metrics table: [report_core_metrics.csv](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/report_core_metrics.csv)
-- C++ master summary: [tf_backtest_summary.csv](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp/tf_backtest_summary.csv)
-- Overview report table: [cpp_backtest_report_overview.csv](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_report/cpp_backtest_report_overview.csv)
+- Core metrics table: [report_core_metrics.csv](report_core_metrics.csv)
+- C++ master summary: [tf_backtest_summary.csv](../results_cpp/tf_backtest_summary.csv)
+- Overview report table: [cpp_backtest_report_overview.csv](cpp_backtest_report_overview.csv)
+
+## 10. Sources And Assumptions
+
+### Project sources
+
+- [Final Project MATH GR5360.pdf](../Final%20Project%20MATH%20GR5360.pdf)
+- professor-provided `main.m` and `ezread.m`
+- course lecture material on Variance Ratio, Push-Response, and drawdown-family measures
+
+### Transaction-cost / contract references used for the rendered C++ examples
+
+- [CME Treasury contract specifications](https://www.cmegroup.com/education/courses/introduction-to-treasuries/understand-treasuries-contract-specifications.hideHeader.hideFooter.hideSubnav.hideAddThisExt.educationIframe.html.html)
+- [BIS Treasury market liquidity paper](https://www.bis.org/publ/cgfs11flem.pdf)
+- [CME Bitcoin futures rulebook](https://www.cmegroup.com/content/dam/cmegroup/rulebook/CME/IV/350/350.pdf)
+- [CME Bitcoin liquidity materials](https://www.cmegroup.com/education/bitcoin/futures-liquidity-report.html)
+- [CME fee / clearing references](https://www.cmegroup.com/company/clearing-fees.html)
+
+### Important assumption note
+
+- The assignment says the final slippage should come from the professor-provided parameter sheets.
+- The rendered C++ example run documented here used the conservative defaults embedded in the binary:
+  - `TY`: `$18.625` round-turn
+  - `BTC`: `$50.00` round-turn
+- If the group wants strict final submission parity with the course parameter tables, rerun the binary with explicit transaction-cost overrides.

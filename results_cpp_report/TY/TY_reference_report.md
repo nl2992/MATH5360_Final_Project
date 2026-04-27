@@ -18,10 +18,24 @@
 |:---------|:----------|:--------------------|:--------------------|-------:|--------------:|------------:|------------:|--------------------:|-------------------:|-------------:|-----------:|-------------:|--------------:|------------:|--------------:|------------:|------------:|----------:|----------------:|:-------------------------------------------------------------------------------------------------|-----------:|---------:|----------------:|--------------:|
 | TY       | reference | 1983-01-03 08:05:00 | 2026-04-10 13:55:00 | 853091 |        106632 |     92700.7 |     13931.5 |                1496 |        1.65355e+08 |      12179.1 |    13650.4 |          748 |     0.0374719 |   0.0391187 |       0.47622 |    0.415582 |   0.0172963 |  0.015619 |          18.625 | Default TY round-turn cost = $18.625 = one CME/CBOT 10Y tick ($15.625) plus a small fee cushion. |    5.94499 |  4.90624 |         39.3954 |       39.4224 |
 
-## Files
+## Embedded Figures
 
-- Growth of $1: `TY_reference_growth_of_1.png`
-- Underwater: `TY_reference_underwater.png`
-- Costs and turnover: `TY_reference_costs_turnover.png`
-- Reference OOS growth: `TY_reference_oos_growth_of_1.png`
-- Reference OOS underwater: `TY_reference_oos_underwater.png`
+### Full reference-sample growth of $1
+
+![TY growth of $1](TY_reference_growth_of_1.png)
+
+### Full reference-sample underwater curve
+
+![TY underwater](TY_reference_underwater.png)
+
+### Transaction costs and turnover
+
+![TY costs and turnover](TY_reference_costs_turnover.png)
+
+### Reference OOS growth of $1
+
+![TY reference OOS growth of $1](TY_reference_oos_growth_of_1.png)
+
+### Reference OOS underwater curve
+
+![TY reference OOS underwater](TY_reference_oos_underwater.png)
