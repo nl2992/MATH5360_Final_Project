@@ -41,11 +41,13 @@ def _channel_core(
     E0,
     barsBack,
     eval_start,
+    rebase_at_eval_start,
 ):
     N = len(Close)
     E = np.zeros(N) + E0
     DD = np.zeros(N)
     position_arr = np.zeros(N, dtype=np.int64)
+    trade_weights = np.zeros(N)
 
     HH = np.zeros(N)
     LL = np.zeros(N)
@@ -82,6 +84,7 @@ def _channel_core(
 
             if buy and sell:
                 delta = -slpg + PV * (LL[k] - HH[k])
+                trade_weights[k] = 1.0
                 t_entry_bar[n_closed] = k
                 t_exit_bar[n_closed] = k
                 t_dir[n_closed] = 1
@@ -97,6 +100,7 @@ def _channel_core(
                     position = 1
                     traded = True
                     benchmarkLong = High[k]
+                    trade_weights[k] = 0.5
                     open_entry_bar = k
                     open_entry_px = HH[k]
                     open_dir = 1
@@ -105,6 +109,7 @@ def _channel_core(
                     position = -1
                     traded = True
                     benchmarkShort = Low[k]
+                    trade_weights[k] = 0.5
                     open_entry_bar = k
                     open_entry_px = LL[k]
                     open_dir = -1
@@ -115,6 +120,7 @@ def _channel_core(
 
             if sellShort and sell:
                 delta = delta - slpg - 2.0 * PV * (Close[k] - LL[k])
+                trade_weights[k] = 1.0
                 t_entry_bar[n_closed] = open_entry_bar
                 t_exit_bar[n_closed] = k
                 t_dir[n_closed] = open_dir
@@ -134,6 +140,7 @@ def _channel_core(
                 if sell:
                     exit_px = benchmarkLong * (1.0 - S)
                     delta = delta - slpg / 2.0 - PV * (Close[k] - exit_px)
+                    trade_weights[k] = 0.5
                     t_entry_bar[n_closed] = open_entry_bar
                     t_exit_bar[n_closed] = k
                     t_dir[n_closed] = open_dir
@@ -151,6 +158,7 @@ def _channel_core(
 
                 if sellShort:
                     delta = delta - slpg - 2.0 * PV * (Close[k] - LL[k])
+                    trade_weights[k] = 1.0
                     t_entry_bar[n_closed] = open_entry_bar
                     t_exit_bar[n_closed] = k
                     t_dir[n_closed] = open_dir
@@ -175,6 +183,7 @@ def _channel_core(
 
             if buyLong and buy:
                 delta = delta - slpg + 2.0 * PV * (Close[k] - HH[k])
+                trade_weights[k] = 1.0
                 t_entry_bar[n_closed] = open_entry_bar
                 t_exit_bar[n_closed] = k
                 t_dir[n_closed] = open_dir
@@ -194,6 +203,7 @@ def _channel_core(
                 if buy:
                     exit_px = benchmarkShort * (1.0 + S)
                     delta = delta - slpg / 2.0 + PV * (Close[k] - exit_px)
+                    trade_weights[k] = 0.5
                     t_entry_bar[n_closed] = open_entry_bar
                     t_exit_bar[n_closed] = k
                     t_dir[n_closed] = open_dir
@@ -211,6 +221,7 @@ def _channel_core(
 
                 if buyLong:
                     delta = delta - slpg + 2.0 * PV * (Close[k] - HH[k])
+                    trade_weights[k] = 1.0
                     t_entry_bar[n_closed] = open_entry_bar
                     t_exit_bar[n_closed] = k
                     t_dir[n_closed] = open_dir
@@ -234,7 +245,7 @@ def _channel_core(
         DD[k] = E[k] - Emax
         position_arr[k] = position
 
-    if eval_start > 0:
+    if rebase_at_eval_start and eval_start > 0:
         base = E[eval_start - 1]
         offset = base - E0
         for k in range(N):
@@ -261,6 +272,7 @@ def _channel_core(
         t_pnl[:n_closed],
         t_slpg[:n_closed],
         t_is_oos[:n_closed],
+        trade_weights,
         n_closed,
     )
 
@@ -534,20 +546,38 @@ def _post_process_result(
     warmup_bars: int,
     output: tuple,
 ) -> dict[str, object]:
-    (
-        equity,
-        drawdown,
-        position,
-        entry_bar,
-        exit_bar,
-        direction,
-        entry_price,
-        exit_price,
-        pnl,
-        slippage,
-        is_oos,
-        n_closed,
-    ) = output
+    if len(output) == 13:
+        (
+            equity,
+            drawdown,
+            position,
+            entry_bar,
+            exit_bar,
+            direction,
+            entry_price,
+            exit_price,
+            pnl,
+            slippage,
+            is_oos,
+            trade_weights,
+            n_closed,
+        ) = output
+    else:
+        (
+            equity,
+            drawdown,
+            position,
+            entry_bar,
+            exit_bar,
+            direction,
+            entry_price,
+            exit_price,
+            pnl,
+            slippage,
+            is_oos,
+            n_closed,
+        ) = output
+        trade_weights = np.zeros_like(equity, dtype=float)
     ledger = _build_ledger(
         df,
         slice_start,
@@ -564,6 +594,9 @@ def _post_process_result(
     max_dd = float(abs(drawdown.min()))
     objective = profit / max_dd if max_dd > 0 else 0.0
     oos_ledger = ledger[ledger["is_oos"]] if len(ledger) else ledger
+    bar_pnl = np.zeros_like(equity, dtype=float)
+    if len(equity) > 1:
+        bar_pnl[1:] = np.diff(equity)
     return {
         "error": False,
         "family": family,
@@ -576,6 +609,8 @@ def _post_process_result(
         "Equity": equity,
         "Drawdown": drawdown,
         "Position": position,
+        "BarPnL": bar_pnl,
+        "TradeWeights": trade_weights,
         "SliceStart": int(slice_start),
         "EvalStart": int(eval_start),
         "EvalEnd": int(eval_end),
@@ -592,6 +627,8 @@ def run_tf_backtest(
     eval_start: int | None = None,
     eval_end: int | None = None,
     warmup_bars: int | None = None,
+    bars_back: int | None = None,
+    rebase_at_eval_start: bool = True,
 ) -> dict[str, object]:
     spec = get_market(ticker)
     n = len(df)
@@ -609,7 +646,8 @@ def run_tf_backtest(
         return {"error": True, "family": "tf", "params": {"L": int(L), "S": float(S)}, "why": "slice too short"}
 
     local_eval_start = eval_start - slice_start
-    bars_back = max(100, local_eval_start)
+    if bars_back is None:
+        bars_back = max(100, local_eval_start)
 
     output = _channel_core(
         df["Open"].values[slice_start:slice_end],
@@ -623,6 +661,7 @@ def run_tf_backtest(
         float(spec.E0),
         int(bars_back),
         int(local_eval_start),
+        bool(rebase_at_eval_start),
     )
     return _post_process_result(
         "tf",
