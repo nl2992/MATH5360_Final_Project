@@ -2,256 +2,326 @@
 
 Trend-following futures research project for Columbia University, Spring 2026.
 
-The repo is now organized around a shared Python engine plus segmented notebooks. The engine holds the formulas and backtest logic; the notebooks are presentation layers for diagnostics, walk-forward testing, performance reporting, and the two-market narrative we want to show in the final project.
+This repository now contains:
+
+- a shared Python research engine in `mafn_engine/`
+- segmented notebooks for diagnostics, walk-forward testing, and performance analysis
+- a C++ trend-following backtester for `TY` and `BTC`
+- rendered CSV, figure, and markdown outputs for report-writing
+
+## Assignment Focus
+
+The final project asks us to:
+
+1. understand the chosen futures markets
+2. run both statistical Random Walk tests discussed in class:
+   - Variance Ratio
+   - Push-Response
+3. identify the type and approximate time-scale of inefficiency in each market
+4. implement the trend-following system `Channel WithDDControl`
+5. run a rolling walk-forward experiment:
+   - `T = 4 years` in-sample
+   - `tau = 1 quarter` out-of-sample
+6. record OOS equity and trade-by-trade outputs
+7. measure performance and compare OOS vs in-sample / full-sample behavior
+8. repeat the process on the secondary market
+
+Primary assignment prompt in the repo:
+
+- [Final Project MATH GR5360.pdf](Final%20Project%20MATH%20GR5360.pdf)
 
 ## What We Implemented
 
-- A shared research package in `mafn_engine/`
-- Segmented notebooks for the original staged workflow
-- A one-click master notebook
-- A second pair of story notebooks for the professor-facing `TY -> BTC` narrative
-- Trend-following strategy implementation for `Channel WithDDControl`
-- Statistical diagnostics:
-  - Variance Ratio on signed price changes
-  - Log-return VR as an appendix check
+### Shared engine
+
+- `mafn_engine/config.py`
+  - market metadata
+  - point values
+  - slippage defaults
+  - session filters
+  - default parameter grids
+- `mafn_engine/diagnostics.py`
+  - OHLC loading
+  - session filtering
+  - Variance Ratio test
   - Push-Response diagrams
-- Walk-forward optimization and OOS stitching
-- Ledger-based performance metrics
-- Extended drawdown metrics:
-  - `MaxDD`
-  - `AvgDD`
-  - `CDD(alpha)`
-  - drawdown duration
-  - recovery time
+  - trend-profile summaries
+- `mafn_engine/strategies.py`
+  - `Channel WithDDControl`
+  - trade ledger construction
+  - bar-by-bar equity and drawdown
+- `mafn_engine/walkforward.py`
+  - rolling `4y -> 1Q` walk-forward optimization
+  - OOS stitching
+  - parameter tables
+- `mafn_engine/metrics.py`
+  - performance metrics
+  - drawdown-family metrics including `MaxDD`, `AvgDD`, and `CDD(alpha)`
+- `mafn_engine/reference_backtest.py`
+  - Matlab-parity reference split mode
+  - continuous equity / continuous drawdown evaluation
+  - fixed `barsBack` support
 
-## Core Narrative
+### Notebook workflow
 
-This project is presented as a trend-following project.
+- `00_Master_Pipeline.ipynb`
+- `01_Data_and_Statistical_Tests.ipynb`
+- `02_Strategy_and_WalkForward.ipynb`
+- `03_Performance_Metrics_Extended.ipynb`
+- `04_Two_Market_Diagnostics_Story.ipynb`
+- `05_Two_Market_Trend_Following_Story.ipynb`
 
-The diagnostics are used to locate the time scale of the inefficiency rather than to decide whether the final strategy should be mean-reversion or trend-following.
+### C++ workflow
 
-The intended story is:
+- `cpp/tf_backtest_treasury_btc.cpp`
 
-- `TY` can look mean-reverting or mixed at short horizons.
-- At longer horizons, especially around the professor reference horizon, the variance-ratio curve should be interpreted as bending upward or recovering relative to the earlier decline.
-- That longer-horizon behavior is the trend-following property we want to highlight for Treasury futures.
-- `BTC` should show a clearer and faster trend-following signature.
-- Therefore, `TY` should use slower / longer holding-period trend-following than `BTC`.
+Modes:
 
-Professor reference horizons currently wired into the engine:
+- `walkforward`
+- `reference`
+- `both`
 
-- `TY`: `tau = 1440` bars
-- `BTC`: `tau = 1152` bars
+### Post-processing / report generation
 
-## Repository Structure
+- `scripts/render_cpp_backtest_report.py`
 
-```text
-MATH5360_Final_Project/
-├── README.md
-├── data/
-│   ├── TY-5minHLV.csv
-│   ├── BTC-5minHLV.csv
-│   └── ...
-├── mafn_engine/
-│   ├── __init__.py
-│   ├── config.py
-│   ├── diagnostics.py
-│   ├── metrics.py
-│   ├── strategies.py
-│   ├── walkforward.py
-│   └── workflow.py
-├── notebooks/
-│   ├── 00_Master_Pipeline.ipynb
-│   ├── 01_Data_and_Statistical_Tests.ipynb
-│   ├── 02_Strategy_and_WalkForward.ipynb
-│   ├── 03_Performance_Metrics_Extended.ipynb
-│   ├── 04_Two_Market_Diagnostics_Story.ipynb
-│   ├── 05_Two_Market_Trend_Following_Story.ipynb
-│   └── strategy_lib.py
-└── tests/
-    └── test_engine_smoke.py
-```
+This script reads the C++ outputs and produces:
 
-## Engine Modules
+- growth-of-$1 plots
+- underwater plots
+- cost / turnover plots
+- derived stats tables
+- report markdowns
 
-### `mafn_engine/config.py`
+## Core Research Questions And Answers
 
-- market metadata
-- PV / slippage / session settings
-- annualization helpers
-- default TF / MR grids
-- professor reference horizons
+### 1. What inefficiency are we trying to identify?
 
-### `mafn_engine/diagnostics.py`
+Trend-following inefficiency.
 
-- OHLC loading and validation
-- session filtering
-- variance-ratio test suite
-- dense VR curves
-- push-response diagrams
-- trend-profile summaries
+The assignment is explicitly trend-following at the strategy level, but the statistical tests still matter because they tell us **where** that trend-following behavior appears in time scale.
 
-### `mafn_engine/strategies.py`
+### 2. What is the story for Treasury futures (`TY`)?
 
-- `Channel WithDDControl`
-- MR backtest support retained internally
-- trade ledger construction
-- backtest result packaging
+Short-horizon `TY` behavior can look mean-reverting or mixed.
 
-### `mafn_engine/walkforward.py`
+At longer horizons, the professor’s intended interpretation is that the Variance Ratio curve bends upward / recovers as the horizon gets larger, and Push-Response becomes more trend-consistent. That is the longer-horizon trend-following property we want to highlight.
 
-- IS/OOS splitting
-- parameter search
-- OOS equity stitching
-- walk-forward parameter tables
-- extended `T / tau` surface
+This is why the Treasury strategy should use slower / longer holding-period trend-following than `BTC`.
 
-### `mafn_engine/metrics.py`
+### 3. What is the story for Bitcoin futures (`BTC`)?
 
-- drawdown family calculations
-- ledger-based performance metrics
+`BTC` shows a stronger and faster trend-following signature, so the system naturally prefers shorter lookbacks and much faster holding periods than `TY`.
 
-### `mafn_engine/workflow.py`
+### 4. Did we implement the strategy the way the project requires?
 
-- reusable story bundles
-- `build_market_story(...)`
-- `build_pair_story(...)`
-- TY-first, BTC-second notebook workflow support
+Yes.
 
-## Notebook Guide
+We implemented `Channel WithDDControl` in both Python and C++.
 
-### `00_Master_Pipeline.ipynb`
+We also aligned the engine with the professor’s provided Matlab logic in a separate reference mode:
 
-Runs the main pipeline end to end for one market:
+- one continuous run
+- fixed date slices
+- fixed `barsBack`
+- continuous drawdown carried through OOS
+- Matlab-style trade-event counting
 
-- load data
-- run diagnostics
-- run TF walk-forward
-- compute OOS and full-sample metrics
+### 5. What is the exact OOS workflow?
 
-### `01_Data_and_Statistical_Tests.ipynb`
+Rolling walk-forward:
 
-Main diagnostics notebook.
+- optimize on the previous `4` years
+- apply the best parameter pair to the immediately adjacent next quarter
+- record only the OOS equity and OOS trade table
+- roll forward one quarter
+- repeat
 
-Use this for:
+That is the assignment-required structure.
 
-- data validation
-- variance-ratio tables
-- push-response tables
-- professor-style TY / BTC diagnostic story
+## Current Results Summary
 
-### `02_Strategy_and_WalkForward.ipynb`
+The headline results below come from the C++ runs already written to `results_cpp/`.
 
-Main strategy notebook.
+Master summary table:
 
-Use this for:
+- [results_cpp/tf_backtest_summary.csv](results_cpp/tf_backtest_summary.csv)
 
-- TF sanity checks
-- walk-forward parameter selection
-- OOS parameter tables
+Detailed extracted summary:
 
-### `03_Performance_Metrics_Extended.ipynb`
+- [results_cpp_report/final_report_extract.md](results_cpp_report/final_report_extract.md)
+- [results_cpp_report/report_core_metrics.csv](results_cpp_report/report_core_metrics.csv)
 
-Main performance notebook.
+### Walk-forward OOS
 
-Use this for:
+| Market | OOS Periods | Modal `L` | Modal `S` | Net Profit | Net MaxDD | Net RoA | Closed Trades |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `TY` | 153 | 1440 | 0.01 | $47,618.66 | $30,234.59 | 1.575 | 403 |
+| `BTC` | 6 | 288 | 0.01 | $465,260.50 | $140,383.75 | 3.314 | 1005 |
 
-- OOS performance metrics
-- drawdown family metrics
-- full-sample modal TF run
-- `T / tau` surface analysis
+### Full-sample comparison
 
-### `04_Two_Market_Diagnostics_Story.ipynb`
+| Market | `L` | `S` | Net Profit | Net MaxDD | Net RoA | Closed Trades |
+|---|---:|---:|---:|---:|---:|---:|
+| `TY` | 1440 | 0.01 | $85,134.72 | $15,273.13 | 5.574 | 719 |
+| `BTC` | 288 | 0.01 | $1,605,307.00 | $140,383.75 | 11.435 | 4881 |
 
-Professor-facing story notebook for diagnostics.
+### OOS decay vs full-sample
 
-Runs:
+| Market | OOS / Full Net Profit | OOS / Full Net RoA |
+|---|---:|---:|
+| `TY` | 0.559 | 0.283 |
+| `BTC` | 0.290 | 0.290 |
 
-1. `TY`
-2. `BTC`
+Interpretation:
 
-and shows:
+- `TY` remains profitable OOS, but its OOS quality is much weaker than the full-history benchmark.
+- `BTC` remains strongly profitable OOS, but still decays materially out of sample.
 
-- dense VR curves
-- short-horizon vs reference-horizon push-response figures
-- cross-market narrative tables
+## Parameter Behavior
 
-### `05_Two_Market_Trend_Following_Story.ipynb`
+### TY
 
-Professor-facing story notebook for the implementation layer.
+Most common quarterly selections:
 
-Runs:
+- `L = 1440, S = 0.01` selected `19` times
+- `L = 1920, S = 0.04` selected `18` times
+- `L = 1920, S = 0.03` selected `13` times
 
-1. `TY`
-2. `BTC`
+Takeaway:
 
-and shows:
+- Treasury futures favor slower trend horizons.
+- The dominant lookbacks are in the `1440` to `1920` bar region, which is consistent with the “longer-horizon trend-following” narrative from class.
 
-- TF walk-forward outputs
-- selected TF lookbacks
-- OOS equity curves
-- full-sample TF summaries
+### BTC
+
+Most common quarterly selections:
+
+- `L = 288, S = 0.01` selected `4` times
+- `L = 576, S = 0.01` selected `1` time
+- `L = 1152, S = 0.01` selected `1` time
+
+Takeaway:
+
+- Bitcoin trend-following appears at much shorter horizons than Treasury futures.
+
+## Reporting Caveat
+
+The walk-forward OOS equity curve is marked to market bar by bar.
+
+The OOS trade table contains only closed trades.
+
+That means quarter-end unrealized P&L can make equity-curve performance measures differ from trade-table summaries. For the assignment, the main headline numbers should therefore come from the **OOS equity curve**:
+
+- Net Profit
+- Worst / Max Drawdown
+- RoA
+- return volatility
+- Sharpe
+
+Trade-level metrics should be presented as complementary diagnostics:
+
+- win rate
+- average winner / loser
+- profit factor
+- duration
+- trade count
+
+## Key Artifacts
+
+### Raw result folders
+
+- [results_cpp/TY](results_cpp/TY)
+- [results_cpp/BTC](results_cpp/BTC)
+
+### Rendered report folders
+
+- [results_cpp_report/TY](results_cpp_report/TY)
+- [results_cpp_report/BTC](results_cpp_report/BTC)
+
+### Example figures
+
+TY:
+
+- [TY_reference_growth_of_1.png](results_cpp_report/TY/TY_reference_growth_of_1.png)
+- [TY_reference_underwater.png](results_cpp_report/TY/TY_reference_underwater.png)
+- [TY_reference_costs_turnover.png](results_cpp_report/TY/TY_reference_costs_turnover.png)
+- [TY_reference_oos_growth_of_1.png](results_cpp_report/TY/TY_reference_oos_growth_of_1.png)
+
+BTC:
+
+- [BTC_reference_growth_of_1.png](results_cpp_report/BTC/BTC_reference_growth_of_1.png)
+- [BTC_reference_underwater.png](results_cpp_report/BTC/BTC_reference_underwater.png)
+- [BTC_reference_costs_turnover.png](results_cpp_report/BTC/BTC_reference_costs_turnover.png)
+- [BTC_reference_oos_growth_of_1.png](results_cpp_report/BTC/BTC_reference_oos_growth_of_1.png)
 
 ## Recommended Run Order
 
-For the original segmented workflow:
+### Diagnostics and story
+
+1. `04_Two_Market_Diagnostics_Story.ipynb`
+2. `05_Two_Market_Trend_Following_Story.ipynb`
+
+### Original staged workflow
 
 1. `01_Data_and_Statistical_Tests.ipynb`
 2. `02_Strategy_and_WalkForward.ipynb`
 3. `03_Performance_Metrics_Extended.ipynb`
 
-For the story / presentation workflow:
+### C++ backtest and report render
 
-1. `04_Two_Market_Diagnostics_Story.ipynb`
-2. `05_Two_Market_Trend_Following_Story.ipynb`
+```bash
+cd "/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project"
 
-For an all-in-one single-market run:
+g++ -std=c++17 -O2 -Wall -Wextra -pedantic cpp/tf_backtest_treasury_btc.cpp -o cpp/tf_backtest_treasury_btc
 
-1. `00_Master_Pipeline.ipynb`
+./cpp/tf_backtest_treasury_btc --mode both --out-dir results_cpp
 
-## Configuration Notes
+python scripts/render_cpp_backtest_report.py --input-dir results_cpp --output-dir results_cpp_report --run-kind reference --markets TY,BTC
+```
 
-Common notebook switches:
+## Sources And References
 
-- `MARKET_SELECT = 'TY'` or `'BTC'`
-- `QUICK_TEST = True` for faster dev runs
-- `QUICK_TEST = False` for heavier research runs
-- `RUN_EXTENDED_SURFACE = True` only when you want the expensive `T / tau` sweep
+### Project sources
 
-Current presentation default is trend-following:
+- [Final Project MATH GR5360.pdf](Final%20Project%20MATH%20GR5360.pdf)
+- professor-provided `main.m` and `ezread.m` reference logic
+- lecture material on:
+  - Variance Ratio
+  - Push-Response
+  - drawdown-family risk measures
 
-- visible notebook workflow uses TF
-- the diagnostics still preserve the short-horizon MR / long-horizon TF Treasury interpretation
+### Transaction-cost / contract references used when choosing default C++ assumptions
 
-## Verification Status
+- [CME Treasury contract specifications](https://www.cmegroup.com/education/courses/introduction-to-treasuries/understand-treasuries-contract-specifications.hideHeader.hideFooter.hideSubnav.hideAddThisExt.educationIframe.html.html)
+- [BIS paper on Treasury market liquidity](https://www.bis.org/publ/cgfs11flem.pdf)
+- [CME Bitcoin futures rulebook](https://www.cmegroup.com/content/dam/cmegroup/rulebook/CME/IV/350/350.pdf)
+- [CME Bitcoin liquidity materials](https://www.cmegroup.com/education/bitcoin/futures-liquidity-report.html)
+- [CME fee / clearing references](https://www.cmegroup.com/company/clearing-fees.html)
 
-Current quick health checks that pass:
+Important note:
 
-- Python modules compile
-- notebooks compile cell-by-cell
-- smoke tests pass from `tests/test_engine_smoke.py`
+- The assignment itself says the final slippage should come from the project futures-parameter tables.
+- The current C++ runs use the conservative defaults built into the code:
+  - `TY`: `$18.625` round-turn
+  - `BTC`: `$50.00` round-turn
+- If the group wants strict final submission parity with the project parameter sheets, rerun the C++ binary with explicit overrides:
+  - `--ty-rt-cost ...`
+  - `--btc-rt-cost ...`
 
-These checks cover:
+## Current Status
 
-- direct CSV loading
-- OOS equity stitching
-- drawdown-family sign conventions
-- modal config selection
-- TF ledger reconciliation
-- story-workflow bundle generation
+Working now:
 
-## Known Practical Notes
+- shared Python engine
+- professor-parity reference mode
+- strict trend-following notebook workflow
+- rolling `4y -> 1Q` OOS backtest
+- C++ TY / BTC backtester
+- rendered report artifacts
 
-- Full-history dense diagnostics can be slow, especially for `TY` and `BTC`.
-- The story notebooks are designed so the logic lives in the engine and the notebook only renders the artifacts.
-- There are generated `__pycache__/` files in the tree right now; if this is going into git cleanly, add or update `.gitignore`.
+Still worth doing for the final presentation:
 
-## References
-
-- Course materials:
-  - `Final Project MATH GR5360.pdf`
-  - `BasicTradingSystems.doc`
-  - `PNL Formula.doc`
-  - `DrawDown Measure.pdf`
-  - lecture slides, including the variance-ratio and push-response material
-- Lo and MacKinlay variance-ratio framework
+- final `T` / `tau` sweep across more values
+- final slippage verification against the course parameter tables
+- final PowerPoint packaging and narrative polish
