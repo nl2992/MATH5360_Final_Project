@@ -1,0 +1,269 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import matplotlib as mpl
+from matplotlib.colors import LinearSegmentedColormap
+import numpy as np
+
+
+@dataclass(frozen=True)
+class MarketSpec:
+    ticker: str
+    name: str
+    exchange: str
+    PV: float
+    slpg: float
+    tick_value: float
+    pv_multiplier: float = 1.0
+    E0: float = 100_000.0
+    session_start: str | None = None
+    session_end: str | None = None
+    session_minutes: int = 390
+    bars_per_session: int = 78
+    trading_days_per_year: int = 252
+    use_session_filter: bool = False
+    start_price: float = 100.0
+    synthetic_sigma: float = 0.0003
+
+
+COLUMBIA_BLUE = "#B9D9EB"
+COLUMBIA_CORE = "#75AADB"
+COLUMBIA_NAVY = "#012169"
+COLUMBIA_DARK = "#1D4F91"
+COLUMBIA_ACCENT = "#C4D8E2"
+COLUMBIA_GREY = "#4B4B4B"
+COLUMBIA_WARM = "#E08119"
+COLUMBIA_RED = "#8B0000"
+
+COLUMBIA_CMAP = LinearSegmentedColormap.from_list(
+    "columbia",
+    [COLUMBIA_NAVY, COLUMBIA_DARK, COLUMBIA_CORE, COLUMBIA_BLUE, "#FFFFFF"],
+)
+COLUMBIA_DIVERGING = LinearSegmentedColormap.from_list(
+    "columbia_div",
+    [COLUMBIA_RED, COLUMBIA_WARM, "#FFFFFF", COLUMBIA_CORE, COLUMBIA_NAVY],
+)
+
+
+def _market(
+    ticker: str,
+    name: str,
+    exchange: str,
+    pv: float,
+    slpg: float,
+    tick_value: float,
+    pv_multiplier: float = 1.0,
+    *,
+    session_start: str | None = None,
+    session_end: str | None = None,
+    session_minutes: int = 390,
+    trading_days_per_year: int = 252,
+    use_session_filter: bool = False,
+    start_price: float = 100.0,
+    synthetic_sigma: float = 0.0003,
+) -> MarketSpec:
+    return MarketSpec(
+        ticker=ticker,
+        name=name,
+        exchange=exchange,
+        PV=pv,
+        slpg=slpg,
+        tick_value=tick_value,
+        pv_multiplier=pv_multiplier,
+        session_start=session_start,
+        session_end=session_end,
+        session_minutes=session_minutes,
+        bars_per_session=max(1, session_minutes // 5),
+        trading_days_per_year=trading_days_per_year,
+        use_session_filter=use_session_filter,
+        start_price=start_price,
+        synthetic_sigma=synthetic_sigma,
+    )
+
+
+MARKETS: dict[str, MarketSpec] = {
+    "BO": _market("BO", "Soybean Oil", "CBOT-CME", 600, 39, 6, start_price=30),
+    "DX": _market("DX", "Dollar Index", "NYBOT-ICE", 1000, 16.5, 5, start_price=90),
+    "HG": _market("HG", "Copper", "COMEX-NYMEX-CME", 250, 59.25, 12.5, start_price=3),
+    "HO": _market("HO", "Heating Oil", "NYMEX-CME", 420, 70.2, 4.2, 100, start_price=2),
+    "JO": _market("JO", "Orange Juice", "NYBOT-ICE", 150, 183, 7.5, start_price=100),
+    "JY": _market("JY", "Japanese Yen", "CME", 1250, 53, 6.25, 100, start_price=0.009),
+    "SY": _market("SY", "Soybeans", "CBOT-CME", 50, 35.5, 12.5, start_price=900),
+    "SB": _market("SB", "Sugar #11", "NYBOT-ICE", 1120, 56.76, 11.2, start_price=15),
+    "SF": _market("SF", "Swiss Franc", "CME", 1250, 25.5, 12.5, 100, start_price=1),
+    "TU": _market("TU", "2-Year Treasury", "CBOT-CME", 2000, 18.625, 15.625, start_price=105),
+    "TY": _market(
+        "TY",
+        "10-Year Treasury",
+        "CBOT-CME",
+        1000,
+        18.625,
+        15.625,
+        session_start="07:20",
+        session_end="14:00",
+        session_minutes=400,
+        trading_days_per_year=252,
+        use_session_filter=True,
+        start_price=115,
+    ),
+    "WC": _market("WC", "Wheat", "CBOT-CME", 50, 30.5, 12.5, start_price=500),
+    "SM": _market("SM", "Soybean Meal", "CBOT-CME", 100, 57, 10, start_price=300),
+    "CC": _market("CC", "Cocoa", "NYBOT-ICE", 10, 103, 10, start_price=2500),
+    "BZ": _market("BZ", "Schatz", "EUREX", 1000, 10.5, 5, start_price=110),
+    "CL": _market("CL", "Crude Oil WTI", "NYMEX-CME", 1000, 46, 10, start_price=60),
+    "GC": _market("GC", "Gold 100oz", "COMEX-NYMEX-CME", 100, 65, 10, start_price=1300),
+    "SV": _market("SV", "Silver", "COMEX-NYMEX-CME", 5000, 243, 25, 0.01, start_price=15),
+    "BTC": _market(
+        "BTC",
+        "Bitcoin",
+        "CME / Spot",
+        5,
+        50,
+        25,
+        session_minutes=1440,
+        trading_days_per_year=365,
+        use_session_filter=False,
+        start_price=20_000,
+        synthetic_sigma=0.0015,
+    ),
+    "CO": _market("CO", "Brent Crude Oil", "ICE", 1000, 46, 10, start_price=60),
+    "FC": _market("FC", "Feeder Cattle", "CME", 500, 60, 12.5, start_price=150),
+    "PL": _market("PL", "Platinum", "NYMEX", 50, 70, 5, start_price=900),
+    "XB": _market("XB", "Gasoline (RBOB)", "NYMEX", 420, 70.2, 4.2, 100, start_price=2),
+    "COKE": _market("COKE", "Coke Futures", "DCE", 100, 60, 10, start_price=2000),
+    "CS": _market("CS", "Corn Starch Futures", "DCE", 10, 30, 1, start_price=2500),
+    "SOYBN": _market("SOYBN", "No. 1 Soybean Futures", "DCE", 10, 35, 1, start_price=4000),
+    "AUG": _market("AUG", "Gold Futures", "SHFE", 1000, 50, 10, start_price=450),
+    "CUC": _market("CUC", "Copper Cathode Futures", "SHFE", 5, 40, 25, start_price=50_000),
+    "CFC": _market("CFC", "Cotton No. 1 Futures", "CZCE", 5, 40, 25, start_price=15_000),
+}
+
+
+def get_market(ticker: str) -> MarketSpec:
+    key = ticker.upper()
+    if key not in MARKETS:
+        raise ValueError(f"Unknown market {ticker!r}. Available: {sorted(MARKETS)}")
+    return MARKETS[key]
+
+
+def apply_columbia_theme() -> None:
+    mpl.rcParams.update(
+        {
+            "figure.figsize": (14, 6),
+            "figure.facecolor": "white",
+            "axes.facecolor": "white",
+            "axes.edgecolor": COLUMBIA_NAVY,
+            "axes.labelcolor": COLUMBIA_NAVY,
+            "axes.titlecolor": COLUMBIA_NAVY,
+            "axes.titleweight": "bold",
+            "axes.titlesize": 13,
+            "axes.labelsize": 11,
+            "axes.grid": True,
+            "grid.color": COLUMBIA_ACCENT,
+            "grid.alpha": 0.55,
+            "grid.linewidth": 0.7,
+            "xtick.color": COLUMBIA_NAVY,
+            "ytick.color": COLUMBIA_NAVY,
+            "legend.frameon": True,
+            "legend.edgecolor": COLUMBIA_NAVY,
+            "lines.linewidth": 1.3,
+            "font.size": 11,
+            "font.family": "DejaVu Sans",
+        }
+    )
+
+
+def bars_per_year(ticker: str) -> int:
+    spec = get_market(ticker)
+    return spec.bars_per_session * spec.trading_days_per_year
+
+
+def bars_to_time(k: int, ticker: str) -> str:
+    spec = get_market(ticker)
+    mins = k * 5
+    if mins < 60:
+        return f"{mins}min"
+    if mins < spec.session_minutes:
+        return f"{mins / 60:.1f}hr"
+    if spec.ticker == "BTC":
+        return f"{mins / 1440:.1f}d"
+    return f"{mins / spec.session_minutes:.1f}sess"
+
+
+def professor_reference_tau(ticker: str) -> int:
+    spec = get_market(ticker)
+    if spec.ticker == "TY":
+        return 1440
+    if spec.ticker == "BTC":
+        return 1152
+    return spec.bars_per_session
+
+
+def professor_dense_q_grid(ticker: str) -> np.ndarray:
+    spec = get_market(ticker)
+    if spec.ticker == "TY":
+        q_values = np.unique(
+            np.r_[
+                1,
+                np.arange(2, 2401, 40, dtype=int),
+                np.array([80, 160, 400, 800, 1200, 1440, 1600, 2000, 2400], dtype=int),
+            ]
+        )
+        return q_values.astype(int)
+    if spec.ticker == "BTC":
+        q_values = np.unique(
+            np.r_[
+                1,
+                np.arange(2, 2305, 24, dtype=int),
+                np.array([288, 576, 864, 1152, 1440, 1728, 2304], dtype=int),
+            ]
+        )
+        return q_values.astype(int)
+    q_values = np.unique(np.r_[1, np.arange(2, spec.bars_per_session * 10 + 1, max(2, spec.bars_per_session // 4), dtype=int)])
+    return q_values.astype(int)
+
+
+def default_tf_grid(ticker: str, quick: bool = True) -> dict[str, np.ndarray]:
+    ticker = ticker.upper()
+    if quick:
+        if ticker == "BTC":
+            return {
+                "L": np.array([288, 576, 864, 1152, 1440, 1728, 2304], dtype=int),
+                "S": np.arange(0.01, 0.07, 0.01, dtype=float),
+            }
+        if ticker == "TY":
+            return {
+                "L": np.array([960, 1280, 1440, 1600, 1920, 2240, 3200], dtype=int),
+                "S": np.array([0.01, 0.015, 0.02, 0.03, 0.04], dtype=float),
+            }
+        return {
+            "L": np.arange(1000, 10001, 1000, dtype=int),
+            "S": np.arange(0.01, 0.06, 0.01, dtype=float),
+        }
+    return {
+        "L": np.arange(500, 10001, 10, dtype=int),
+        "S": np.arange(0.005, 0.101, 0.001, dtype=float),
+    }
+
+
+def default_mr_grid(ticker: str, quick: bool = True) -> dict[str, np.ndarray]:
+    ticker = ticker.upper()
+    if quick:
+        vol_ma = np.array([24, 48, 80], dtype=int)
+        if ticker == "BTC":
+            vol_ma = np.array([24, 48, 96], dtype=int)
+        return {
+            "N1": np.array([0.5, 1.0, 1.5], dtype=float),
+            "N2": np.array([0.5, 1.0], dtype=float),
+            "VolLen": vol_ma,
+            "MALen": vol_ma,
+            "StpPct": np.array([0.01, 0.02, 0.03], dtype=float),
+        }
+    return {
+        "N1": np.array([0.5, 1.0, 1.5, 2.0], dtype=float),
+        "N2": np.array([0.5, 1.0, 1.5], dtype=float),
+        "VolLen": np.array([24, 48, 80, 160], dtype=int),
+        "MALen": np.array([24, 48, 80, 160, 320], dtype=int),
+        "StpPct": np.array([0.01, 0.02, 0.03, 0.05], dtype=float),
+    }
