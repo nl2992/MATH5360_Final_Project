@@ -30,7 +30,7 @@ from mafn_engine.config import (  # noqa: E402
     resolve_round_turn_cost,
 )
 from mafn_engine.diagnostics import load_ohlc, prepare_analysis_frame  # noqa: E402
-from mafn_engine.metrics import drawdown_family  # noqa: E402
+from mafn_engine.metrics import drawdown_family, performance_from_ledger  # noqa: E402
 from mafn_engine.reference_backtest import run_reference_split  # noqa: E402
 from mafn_engine.strategies import run_backtest  # noqa: E402
 
@@ -189,6 +189,79 @@ def build_parity_table(results_dir: Path) -> pd.DataFrame:
         df[match_col] = np.isclose(df[left], df[right], rtol=1e-9, atol=1e-6)
     df["All Match"] = df[[col for col in df.columns if col.startswith("Match ")]].all(axis=1)
     return df
+
+
+def build_walkforward_replay_comparison(results_dir: Path, report_dir: Path) -> pd.DataFrame:
+    summary = load_csv(results_dir / "tf_backtest_summary.csv")
+    core = load_csv(report_dir / "report_core_metrics.csv")
+    rows: list[dict[str, object]] = []
+    for market in ["TY", "BTC"]:
+        full_df = load_ohlc(str(PROJECT_ROOT / "data"), market, fallback_synthetic=False)
+        df = prepare_analysis_frame(full_df, market)
+        periods = load_periods(results_dir, market)
+        cpp = summary[(summary["Market"] == market) & (summary["RunType"] == "walkforward_oos")].iloc[0]
+        spec = get_market(market)
+        equity_chunks: list[pd.Series] = []
+        ledgers: list[pd.DataFrame] = []
+        for _, row in periods.iterrows():
+            start = pd.Timestamp(row["OOSStart"])
+            end = pd.Timestamp(row["OOSEnd"])
+            oos_start = int(df.index.get_indexer([start])[0])
+            oos_end = int(df.index.get_indexer([end])[0]) + 1
+            if oos_start < 0 or oos_end <= 0:
+                raise ValueError(f"Could not locate OOS bounds for {market}: {start} -> {end}")
+            result = run_backtest(
+                df,
+                market,
+                "tf",
+                {"L": int(row["L"]), "S": float(row["S"])},
+                eval_start=oos_start,
+                eval_end=oos_end,
+                round_turn_cost=resolve_round_turn_cost(market),
+                cost_multiplier=1.0,
+            )
+            local_start = oos_start - int(result["SliceStart"])
+            local_end = oos_end - int(result["SliceStart"])
+            oos_equity = np.asarray(result["Equity"][local_start:local_end], dtype=float)
+            oos_pnl = np.diff(np.r_[spec.E0, oos_equity])
+            equity_chunks.append(pd.Series(oos_pnl, index=df.index[oos_start:oos_end], name="OOS_PnL"))
+            if len(result["Ledger"]):
+                lg = result["Ledger"][result["Ledger"]["is_oos"]].copy()
+                lg.insert(0, "Period", int(row["Period"]))
+                ledgers.append(lg)
+        pnl = pd.concat(equity_chunks)
+        pnl = pnl[~pnl.index.duplicated(keep="first")]
+        equity = spec.E0 + pnl.cumsum()
+        ledger = pd.concat(ledgers, ignore_index=True) if ledgers else pd.DataFrame(columns=["pnl", "duration_bars"])
+        metrics = performance_from_ledger(ledger, equity.to_numpy(dtype=float), market)
+        cpp_sharpe = float(core[(core["Market"] == market) & (core["RunType"] == "walkforward_oos")]["NetAnnSharpe"].iloc[0])
+        row_out = {
+            "Market": market,
+            "PythonPeriods": len(periods),
+            "CppPeriods": int(cpp["Periods"]),
+            "PythonNetProfit": float(metrics["Total Profit"]),
+            "CppNetProfit": float(cpp["NetProfit"]),
+            "PythonNetMaxDD": float(metrics["Max Drawdown $"]),
+            "CppNetMaxDD": float(cpp["NetMaxDD"]),
+            "PythonNetRoA": float(metrics["Return on Account"]),
+            "CppNetRoA": float(cpp["NetRoA"]),
+            "PythonTrades": int(metrics["Total Trades"]),
+            "CppTrades": int(cpp["ClosedTrades"]),
+            "PythonSharpe": float(metrics["Sharpe Ratio"]),
+            "CppSharpe": cpp_sharpe,
+        }
+        for py_col, cpp_col, err_col in [
+            ("PythonNetProfit", "CppNetProfit", "ProfitErrPct"),
+            ("PythonNetMaxDD", "CppNetMaxDD", "MaxDDErrPct"),
+            ("PythonNetRoA", "CppNetRoA", "RoAErrPct"),
+            ("PythonTrades", "CppTrades", "TradesErrPct"),
+            ("PythonSharpe", "CppSharpe", "SharpeErrPct"),
+        ]:
+            denom = abs(row_out[cpp_col]) if row_out[cpp_col] != 0 else np.nan
+            row_out[err_col] = abs(row_out[py_col] - row_out[cpp_col]) / denom * 100.0
+        row_out["Within10Pct"] = all(float(row_out[col]) <= 10.0 for col in ["ProfitErrPct", "MaxDDErrPct", "RoAErrPct", "TradesErrPct", "SharpeErrPct"])
+        rows.append(row_out)
+    return pd.DataFrame(rows)
 
 
 def build_vr_recovery_summary(diag_dir: Path) -> pd.DataFrame:
@@ -528,6 +601,8 @@ def save_visuals(
 
     parity = build_parity_table(results_dir)
     parity.to_csv(overview_dir / "parity_check.csv", index=False)
+    walkforward_replay = build_walkforward_replay_comparison(results_dir, report_dir)
+    walkforward_replay.to_csv(overview_dir / "walkforward_python_cpp_comparison.csv", index=False)
 
     vr_summary = build_vr_recovery_summary(diag_dir)
     vr_summary.to_csv(overview_dir / "vr_recovery_summary.csv", index=False)
@@ -564,6 +639,7 @@ def save_visuals(
 
     return {
         "parity": parity,
+        "walkforward_replay": walkforward_replay,
         "vr_summary": vr_summary,
         "drawdown": drawdown_df,
         "decay": decay,
@@ -677,6 +753,19 @@ def write_final_reporting(
     lines.append(safe_markdown(parity))
     lines.append("")
     lines.append("Every row above matched exactly within floating-point tolerance on the rerun parity checks.")
+    lines.append("")
+    lines.append("### Rolling walk-forward replay check")
+    lines.append("")
+    wf_replay = tables["walkforward_replay"].copy()
+    for col in ["PythonNetProfit", "CppNetProfit", "PythonNetMaxDD", "CppNetMaxDD"]:
+        wf_replay[col] = wf_replay[col].map(money)
+    for col in ["PythonNetRoA", "CppNetRoA", "PythonSharpe", "CppSharpe"]:
+        wf_replay[col] = wf_replay[col].map(ratio)
+    for col in ["ProfitErrPct", "MaxDDErrPct", "RoAErrPct", "TradesErrPct", "SharpeErrPct"]:
+        wf_replay[col] = wf_replay[col].map(lambda x: f"{x:.6f}%")
+    lines.append(safe_markdown(wf_replay))
+    lines.append("")
+    lines.append("This check replays the exact C++ quarterly parameter table in Python and compares the stitched OOS result. Both markets are comfortably within the requested `10%` tolerance; in practice they are essentially exact.")
     lines.append("")
     lines.append("## 4. Diagnostics Story")
     lines.append("")
@@ -850,6 +939,7 @@ def write_final_reporting(
             "- Walk-forward summary: [../results_cpp_official_quick/tf_backtest_summary.csv](../results_cpp_official_quick/tf_backtest_summary.csv)",
             "- Overview asset manifest: [overview/asset_manifest.csv](overview/asset_manifest.csv)",
             "- Parity check table: [overview/parity_check.csv](overview/parity_check.csv)",
+            "- Walk-forward replay comparison: [overview/walkforward_python_cpp_comparison.csv](overview/walkforward_python_cpp_comparison.csv)",
             "- Drawdown family summary: [overview/drawdown_family_summary.csv](overview/drawdown_family_summary.csv)",
             "- Quarter extremes: [overview/quarter_extremes.csv](overview/quarter_extremes.csv)",
         ]

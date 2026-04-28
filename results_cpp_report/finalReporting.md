@@ -36,6 +36,15 @@ Important reporting note:
 
 Every row above matched exactly within floating-point tolerance on the rerun parity checks.
 
+### Rolling walk-forward replay check
+
+| Market   |   PythonPeriods |   CppPeriods | PythonNetProfit   | CppNetProfit   | PythonNetMaxDD   | CppNetMaxDD   |   PythonNetRoA |   CppNetRoA |   PythonTrades |   CppTrades |   PythonSharpe |   CppSharpe | ProfitErrPct   | MaxDDErrPct   | RoAErrPct   | TradesErrPct   | SharpeErrPct   | Within10Pct   |
+|:---------|----------------:|-------------:|:------------------|:---------------|:-----------------|:--------------|---------------:|------------:|---------------:|------------:|---------------:|------------:|:---------------|:--------------|:------------|:---------------|:---------------|:--------------|
+| TY       |             153 |          153 | $47,618.66        | $47,618.66     | $30,234.59       | $30,234.59    |          1.575 |       1.575 |            403 |         403 |          0.228 |       0.228 | 0.000000%      | 0.000000%     | 0.000026%   | 0.000000%      | 0.000483%      | True          |
+| BTC      |               6 |            6 | $490,398.00       | $490,398.00    | $138,408.75      | $138,408.75   |          3.543 |       3.543 |           1005 |        1005 |          2.979 |       2.98  | 0.000000%      | 0.000000%     | 0.000004%   | 0.000000%      | 0.005191%      | True          |
+
+This check replays the exact C++ quarterly parameter table in Python and compares the stitched OOS result. Both markets are comfortably within the requested `10%` tolerance; in practice they are essentially exact.
+
 ## 4. Diagnostics Story
 
 ### Reference-horizon composite
@@ -224,6 +233,7 @@ This table is meant to help the group choose which visuals to keep in the final 
 - Walk-forward summary: [../results_cpp_official_quick/tf_backtest_summary.csv](../results_cpp_official_quick/tf_backtest_summary.csv)
 - Overview asset manifest: [overview/asset_manifest.csv](overview/asset_manifest.csv)
 - Parity check table: [overview/parity_check.csv](overview/parity_check.csv)
+- Walk-forward replay comparison: [overview/walkforward_python_cpp_comparison.csv](overview/walkforward_python_cpp_comparison.csv)
 - Drawdown family summary: [overview/drawdown_family_summary.csv](overview/drawdown_family_summary.csv)
 - Quarter extremes: [overview/quarter_extremes.csv](overview/quarter_extremes.csv)
 
