@@ -1,0 +1,15 @@
+
+# Generated result files
+results_cpp/**/*.csv
+results_cpp_official_quick/**/*.csv
+
+results_cpp/**/*.csv
+results_cpp_official_quick/**/*.csv
+results_cpp_smoke/**/*.csv
+results_cost_sensitivity_fixed/**/*.csv
+results_diagnostics_story/**/*.csv
+
+.vendor/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/

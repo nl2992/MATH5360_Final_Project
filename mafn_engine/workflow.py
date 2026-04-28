@@ -7,7 +7,7 @@ import pandas as pd
 
 from .config import default_tf_grid, get_market, professor_reference_tau
 from .diagnostics import load_ohlc, prepare_analysis_frame, run_diagnostics, validate_ohlc
-from .metrics import performance_from_ledger
+from .metrics import performance_from_ledger, split_metric_sections
 from .strategies import run_backtest
 from .walkforward import select_modal_configuration, walk_forward, walk_forward_surface
 
@@ -273,9 +273,12 @@ def build_market_story(
     tf_grid: dict[str, np.ndarray] | None = None,
     T_years: int = 4,
     tau_quarters: int = 1,
+    tau_unit: str = "quarters",
     surface_T_values: Sequence[int] | None = None,
     surface_tau_values: Sequence[int] | None = None,
     verbose: bool = False,
+    round_turn_cost: float | None = None,
+    cost_multiplier: float = 1.0,
 ) -> dict[str, object]:
     spec = get_market(ticker)
     if data is None and data_dir is None:
@@ -302,8 +305,11 @@ def build_market_story(
             tf_grid=tf_grid,
             T_years=T_years,
             tau_quarters=tau_quarters,
+            tau_unit=tau_unit,
             quick=quick,
             verbose=verbose,
+            round_turn_cost=round_turn_cost,
+            cost_multiplier=cost_multiplier,
         )
         if len(wf_bundle["equity"]):
             oos_metrics = performance_from_ledger(
@@ -320,8 +326,11 @@ def build_market_story(
                 tf_grid=tf_grid,
                 T_values=list(surface_T_values) if surface_T_values is not None else None,
                 tau_values=list(surface_tau_values) if surface_tau_values is not None else None,
+                tau_unit=tau_unit,
                 quick=quick,
                 verbose=verbose,
+                round_turn_cost=round_turn_cost,
+                cost_multiplier=cost_multiplier,
             )
 
     tf_config = choose_tf_story_configuration(
@@ -329,7 +338,14 @@ def build_market_story(
         tf_grid=tf_grid,
         params_df=wf_bundle["params"] if wf_bundle is not None else None,
     )
-    full_sample_result = run_backtest(analysis_df, spec.ticker, "tf", {"L": tf_config["L"], "S": tf_config["S"]})
+    full_sample_result = run_backtest(
+        analysis_df,
+        spec.ticker,
+        "tf",
+        {"L": tf_config["L"], "S": tf_config["S"]},
+        round_turn_cost=round_turn_cost,
+        cost_multiplier=cost_multiplier,
+    )
     full_sample_metrics = performance_from_ledger(
         full_sample_result["Ledger"],
         np.asarray(full_sample_result["Equity"], dtype=float),
@@ -359,7 +375,9 @@ def build_market_story(
         "tf_config": tf_config,
         "full_sample": full_sample_result,
         "oos_metrics": oos_metrics,
+        "oos_metric_sections": split_metric_sections(oos_metrics) if oos_metrics is not None else None,
         "full_sample_metrics": full_sample_metrics,
+        "full_sample_metric_sections": split_metric_sections(full_sample_metrics),
         "story_rows": story_rows,
         "narrative_lines": narrative_lines,
     }
@@ -375,6 +393,9 @@ def build_pair_story(
     include_walkforward: bool = True,
     include_surface: bool = False,
     verbose: bool = False,
+    tau_unit: str = "quarters",
+    round_turn_cost_map: Mapping[str, float] | None = None,
+    cost_multiplier: float = 1.0,
 ) -> dict[str, object]:
     ordered = [str(ticker).upper() for ticker in tickers]
     stories: dict[str, dict[str, object]] = {}
@@ -392,6 +413,9 @@ def build_pair_story(
             include_walkforward=include_walkforward,
             include_surface=include_surface,
             verbose=verbose,
+            tau_unit=tau_unit,
+            round_turn_cost=None if round_turn_cost_map is None else round_turn_cost_map.get(ticker),
+            cost_multiplier=cost_multiplier,
         )
         stories[ticker] = story
         diagnostics_rows.append(story["story_rows"]["diagnostics"])

@@ -7,7 +7,13 @@ import pandas as pd
 from scipy import stats
 from scipy.stats import spearmanr
 
-from .config import bars_to_time, get_market, professor_dense_q_grid, professor_reference_tau
+from .config import (
+    bars_to_time,
+    get_market,
+    professor_dense_q_grid,
+    professor_reference_tau,
+    professor_showcase_tau,
+)
 
 
 def load_ohlc(data_dir: str, ticker: str, fallback_synthetic: bool = True) -> pd.DataFrame:
@@ -350,18 +356,23 @@ def professor_horizon_bundle(
 ) -> dict[str, object]:
     spec = get_market(ticker)
     reference_tau = int(professor_reference_tau(ticker))
+    showcase_tau = int(professor_showcase_tau(ticker))
     short_tau = spec.bars_per_session if spec.ticker == "TY" else max(spec.bars_per_session, reference_tau // 4)
     vr_curve_df = variance_ratio_curve(df, ticker, q_values=professor_dense_q_grid(ticker))
     short_pr = push_response_diagram(df, short_tau, short_tau, ticker)
     reference_pr = push_response_diagram(df, reference_tau, reference_tau, ticker)
+    showcase_pr = push_response_diagram(df, showcase_tau, showcase_tau, ticker)
     return {
         "reference_tau": reference_tau,
         "reference_scale": bars_to_time(reference_tau, ticker),
+        "showcase_tau": showcase_tau,
+        "showcase_scale": bars_to_time(showcase_tau, ticker),
         "short_tau": int(short_tau),
         "short_scale": bars_to_time(int(short_tau), ticker),
         "vr_curve_df": vr_curve_df,
         "short_pr": short_pr,
         "reference_pr": reference_pr,
+        "showcase_pr": showcase_pr,
     }
 
 

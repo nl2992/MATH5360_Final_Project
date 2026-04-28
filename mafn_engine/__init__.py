@@ -20,6 +20,8 @@ from .config import (
     get_market,
     professor_dense_q_grid,
     professor_reference_tau,
+    professor_showcase_tau,
+    resolve_round_turn_cost,
 )
 from .diagnostics import (
     choose_regime_family,
@@ -41,6 +43,7 @@ from .diagnostics import (
 from .metrics import (
     drawdown_family,
     performance_from_ledger,
+    split_metric_sections,
     summarise_performance_table,
 )
 from .reference_backtest import (
@@ -60,6 +63,7 @@ from .strategies import (
     run_tf_backtest,
 )
 from .walkforward import (
+    parameter_stability_tables,
     select_modal_configuration,
     walk_forward,
     walk_forward_surface,
@@ -107,11 +111,14 @@ __all__ = [
     "load_ohlc",
     "matlab_style_date_bounds",
     "performance_from_ledger",
+    "parameter_stability_tables",
     "prepare_analysis_frame",
     "push_response_diagram",
     "professor_dense_q_grid",
     "professor_horizon_bundle",
     "professor_reference_tau",
+    "professor_showcase_tau",
+    "resolve_round_turn_cost",
     "run_backtest",
     "run_diagnostics",
     "run_mr_backtest",
@@ -124,6 +131,7 @@ __all__ = [
     "select_representative_pr_diagram",
     "build_reference_series_frame",
     "summarise_reference_slice",
+    "split_metric_sections",
     "summarise_trend_profile",
     "summarise_performance_table",
     "validate_ohlc",

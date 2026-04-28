@@ -141,37 +141,46 @@ That is the assignment-required structure.
 
 ## Current Results Summary
 
-The headline results below come from the C++ runs already written to `results_cpp/`.
+The headline results below come from the canonical official-cost C++ run in `results_cpp_official_quick/`.
+
+Canonical result folders:
+
+- [results_cpp_official_quick/tf_backtest_summary.csv](results_cpp_official_quick/tf_backtest_summary.csv)
+- [results_cpp_official_quick_report/final_report_extract.md](results_cpp_official_quick_report/final_report_extract.md)
+- [results_cpp_official_quick_report/report_core_metrics.csv](results_cpp_official_quick_report/report_core_metrics.csv)
+
+Legacy mirrored report files under `results_cpp_report/` are kept in sync for convenience, but the `results_cpp_official_quick*` folders are the source of truth.
 
 Master summary table:
 
-- [results_cpp/tf_backtest_summary.csv](results_cpp/tf_backtest_summary.csv)
+- [results_cpp_official_quick/tf_backtest_summary.csv](results_cpp_official_quick/tf_backtest_summary.csv)
 
 Detailed extracted summary:
 
-- [results_cpp_report/final_report_extract.md](results_cpp_report/final_report_extract.md)
-- [results_cpp_report/report_core_metrics.csv](results_cpp_report/report_core_metrics.csv)
+- [results_cpp_official_quick_report/final_report_extract.md](results_cpp_official_quick_report/final_report_extract.md)
+- [results_cpp_official_quick_report/report_core_metrics.csv](results_cpp_official_quick_report/report_core_metrics.csv)
+- [results_cpp_official_quick_report/finalReporting.md](results_cpp_official_quick_report/finalReporting.md)
 
 ### Walk-forward OOS
 
 | Market | OOS Periods | Modal `L` | Modal `S` | Net Profit | Net MaxDD | Net RoA | Closed Trades |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | `TY` | 153 | 1440 | 0.01 | $47,618.66 | $30,234.59 | 1.575 | 403 |
-| `BTC` | 6 | 288 | 0.01 | $465,260.50 | $140,383.75 | 3.314 | 1005 |
+| `BTC` | 6 | 288 | 0.01 | $490,398.00 | $138,408.75 | 3.543 | 1005 |
 
 ### Full-sample comparison
 
 | Market | `L` | `S` | Net Profit | Net MaxDD | Net RoA | Closed Trades |
 |---|---:|---:|---:|---:|---:|---:|
 | `TY` | 1440 | 0.01 | $85,134.72 | $15,273.13 | 5.574 | 719 |
-| `BTC` | 288 | 0.01 | $1,605,307.00 | $140,383.75 | 11.435 | 4881 |
+| `BTC` | 288 | 0.01 | $1,727,344.50 | $138,408.75 | 12.480 | 4881 |
 
 ### OOS decay vs full-sample
 
 | Market | OOS / Full Net Profit | OOS / Full Net RoA |
 |---|---:|---:|
 | `TY` | 0.559 | 0.283 |
-| `BTC` | 0.290 | 0.290 |
+| `BTC` | 0.284 | 0.284 |
 
 Interpretation:
 
@@ -231,29 +240,48 @@ Trade-level metrics should be presented as complementary diagnostics:
 
 ### Raw result folders
 
-- [results_cpp/TY](results_cpp/TY)
-- [results_cpp/BTC](results_cpp/BTC)
+- [results_cpp_official_quick/TY](results_cpp_official_quick/TY)
+- [results_cpp_official_quick/BTC](results_cpp_official_quick/BTC)
 
 ### Rendered report folders
 
-- [results_cpp_report/TY](results_cpp_report/TY)
-- [results_cpp_report/BTC](results_cpp_report/BTC)
+- [results_cpp_official_quick_report/TY](results_cpp_official_quick_report/TY)
+- [results_cpp_official_quick_report/BTC](results_cpp_official_quick_report/BTC)
 
-### Example figures
+### Embedded figure gallery
 
-TY:
+These are the rendered report figures that support the main narrative:
 
-- [TY_reference_growth_of_1.png](results_cpp_report/TY/TY_reference_growth_of_1.png)
-- [TY_reference_underwater.png](results_cpp_report/TY/TY_reference_underwater.png)
-- [TY_reference_costs_turnover.png](results_cpp_report/TY/TY_reference_costs_turnover.png)
-- [TY_reference_oos_growth_of_1.png](results_cpp_report/TY/TY_reference_oos_growth_of_1.png)
+- `TY`: slower, longer-horizon trend-following with weaker but still positive OOS behavior.
+- `BTC`: faster, stronger trend-following with much larger gross and net moves, but still meaningful OOS decay.
 
-BTC:
+#### TY figures
 
-- [BTC_reference_growth_of_1.png](results_cpp_report/BTC/BTC_reference_growth_of_1.png)
-- [BTC_reference_underwater.png](results_cpp_report/BTC/BTC_reference_underwater.png)
-- [BTC_reference_costs_turnover.png](results_cpp_report/BTC/BTC_reference_costs_turnover.png)
-- [BTC_reference_oos_growth_of_1.png](results_cpp_report/BTC/BTC_reference_oos_growth_of_1.png)
+| Growth of $1 | Underwater |
+|---|---|
+| ![TY growth of $1](results_cpp_official_quick_report/TY/TY_reference_growth_of_1.png) | ![TY underwater](results_cpp_official_quick_report/TY/TY_reference_underwater.png) |
+
+| Costs and turnover | Reference OOS growth of $1 |
+|---|---|
+| ![TY costs and turnover](results_cpp_official_quick_report/TY/TY_reference_costs_turnover.png) | ![TY reference OOS growth of $1](results_cpp_official_quick_report/TY/TY_reference_oos_growth_of_1.png) |
+
+| Reference OOS underwater |
+|---|
+| ![TY reference OOS underwater](results_cpp_official_quick_report/TY/TY_reference_oos_underwater.png) |
+
+#### BTC figures
+
+| Growth of $1 | Underwater |
+|---|---|
+| ![BTC growth of $1](results_cpp_official_quick_report/BTC/BTC_reference_growth_of_1.png) | ![BTC underwater](results_cpp_official_quick_report/BTC/BTC_reference_underwater.png) |
+
+| Costs and turnover | Reference OOS growth of $1 |
+|---|---|
+| ![BTC costs and turnover](results_cpp_official_quick_report/BTC/BTC_reference_costs_turnover.png) | ![BTC reference OOS growth of $1](results_cpp_official_quick_report/BTC/BTC_reference_oos_growth_of_1.png) |
+
+| Reference OOS underwater |
+|---|
+| ![BTC reference OOS underwater](results_cpp_official_quick_report/BTC/BTC_reference_oos_underwater.png) |
 
 ## Recommended Run Order
 
@@ -275,9 +303,11 @@ cd "/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH536
 
 g++ -std=c++17 -O2 -Wall -Wextra -pedantic cpp/tf_backtest_treasury_btc.cpp -o cpp/tf_backtest_treasury_btc
 
-./cpp/tf_backtest_treasury_btc --mode both --out-dir results_cpp
+./cpp/tf_backtest_treasury_btc --mode both --out-dir results_cpp_official_quick
 
-python scripts/render_cpp_backtest_report.py --input-dir results_cpp --output-dir results_cpp_report --run-kind reference --markets TY,BTC
+python scripts/render_cpp_backtest_report.py --input-dir results_cpp_official_quick --output-dir results_cpp_official_quick_report --run-kind auto --markets TY,BTC
+
+python scripts/build_official_report_extract.py
 ```
 
 ## Sources And References
@@ -291,7 +321,7 @@ python scripts/render_cpp_backtest_report.py --input-dir results_cpp --output-di
   - Push-Response
   - drawdown-family risk measures
 
-### Transaction-cost / contract references used when choosing default C++ assumptions
+### Transaction-cost / contract references used in the canonical official run
 
 - [CME Treasury contract specifications](https://www.cmegroup.com/education/courses/introduction-to-treasuries/understand-treasuries-contract-specifications.hideHeader.hideFooter.hideSubnav.hideAddThisExt.educationIframe.html.html)
 - [BIS paper on Treasury market liquidity](https://www.bis.org/publ/cgfs11flem.pdf)
@@ -302,12 +332,10 @@ python scripts/render_cpp_backtest_report.py --input-dir results_cpp --output-di
 Important note:
 
 - The assignment itself says the final slippage should come from the project futures-parameter tables.
-- The current C++ runs use the conservative defaults built into the code:
+- The current canonical C++ runs already use the verified official values:
   - `TY`: `$18.625` round-turn
-  - `BTC`: `$50.00` round-turn
-- If the group wants strict final submission parity with the project parameter sheets, rerun the C++ binary with explicit overrides:
-  - `--ty-rt-cost ...`
-  - `--btc-rt-cost ...`
+  - `BTC`: `$25.00` round-turn
+- If you regenerate older report folders, use `scripts/build_official_report_extract.py` afterward so the mirrored markdown and CSV summaries stay aligned with the canonical official run.
 
 ## Current Status
 
@@ -323,5 +351,4 @@ Working now:
 Still worth doing for the final presentation:
 
 - final `T` / `tau` sweep across more values
-- final slippage verification against the course parameter tables
 - final PowerPoint packaging and narrative polish

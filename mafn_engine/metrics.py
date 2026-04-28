@@ -116,3 +116,47 @@ def performance_from_ledger(
 
 def summarise_performance_table(metrics: dict[str, float]) -> pd.DataFrame:
     return pd.DataFrame([metrics])
+
+
+HEADLINE_METRIC_KEYS = [
+    "Total Profit",
+    "Return %",
+    "Ann. Return %",
+    "Ann. Volatility %",
+    "Sharpe Ratio",
+    "Max Drawdown $",
+    "Max Drawdown %",
+    "Avg Drawdown $",
+    "CDD (α=0.05) $",
+    "DD Duration (bars)",
+    "Recovery (bars)",
+    "Return on Account",
+]
+
+TRADE_METRIC_KEYS = [
+    "Total Trades",
+    "Win Rate %",
+    "Avg Winner $",
+    "Avg Loser $",
+    "Win/Loss Ratio",
+    "Profit Factor",
+    "Gross Profit $",
+    "Gross Loss $",
+    "Avg Trade PnL $",
+    "Avg Duration (bars)",
+]
+
+
+def split_metric_sections(metrics: dict[str, float]) -> dict[str, dict[str, float]]:
+    headline = {key: metrics[key] for key in HEADLINE_METRIC_KEYS if key in metrics}
+    trade = {key: metrics[key] for key in TRADE_METRIC_KEYS if key in metrics}
+    residual = {
+        key: value
+        for key, value in metrics.items()
+        if key not in headline and key not in trade
+    }
+    return {
+        "headline": headline,
+        "trade": trade,
+        "residual": residual,
+    }

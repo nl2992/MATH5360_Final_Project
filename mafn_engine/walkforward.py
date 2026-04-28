@@ -35,6 +35,68 @@ def _concat_oos_equity(
     return pd.DataFrame({"OOS_PnL_cum": cum_pnl, "OOS_Equity": market_e0 + cum_pnl})
 
 
+def _tau_bars(ticker: str, tau_value: int, tau_unit: str) -> int:
+    spec = get_market(ticker)
+    unit = tau_unit.lower().rstrip("s")
+    if unit == "quarter":
+        return int(tau_value * bars_per_year(ticker) / 4)
+    if unit == "month":
+        return int(tau_value * spec.bars_per_session * spec.trading_days_per_year / 12)
+    raise ValueError("tau_unit must be 'quarters' or 'months'")
+
+
+def _tau_label(tau_value: int, tau_unit: str) -> str:
+    unit = tau_unit.lower().rstrip("s")
+    suffix = "Q" if unit == "quarter" else "M"
+    return f"{tau_value}{suffix}"
+
+
+def parameter_stability_tables(params_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    if params_df is None or len(params_df) == 0:
+        empty = pd.DataFrame()
+        return {
+            "timeline": empty,
+            "L_frequency": empty,
+            "S_frequency": empty,
+        }
+
+    cols = [col for col in ["Period", "Family", "IS_start", "IS_end", "OOS_start", "OOS_end", "L", "S"] if col in params_df.columns]
+    timeline = params_df[cols].copy()
+
+    if "L" in params_df.columns:
+        l_frequency = (
+            params_df["L"]
+            .dropna()
+            .astype(int)
+            .value_counts()
+            .sort_index()
+            .rename_axis("L")
+            .reset_index(name="count")
+        )
+    else:
+        l_frequency = pd.DataFrame(columns=["L", "count"])
+
+    if "S" in params_df.columns:
+        s_frequency = (
+            params_df["S"]
+            .dropna()
+            .astype(float)
+            .round(6)
+            .value_counts()
+            .sort_index()
+            .rename_axis("S")
+            .reset_index(name="count")
+        )
+    else:
+        s_frequency = pd.DataFrame(columns=["S", "count"])
+
+    return {
+        "timeline": timeline,
+        "L_frequency": l_frequency,
+        "S_frequency": s_frequency,
+    }
+
+
 def select_modal_configuration(params_df: pd.DataFrame) -> dict[str, object] | None:
     if params_df is None or len(params_df) == 0:
         return None
@@ -80,8 +142,11 @@ def walk_forward(
     mr_grid: dict[str, np.ndarray] | None = None,
     T_years: int = 4,
     tau_quarters: int = 1,
+    tau_unit: str = "quarters",
     quick: bool = True,
     verbose: bool = True,
+    round_turn_cost: float | None = None,
+    cost_multiplier: float = 1.0,
 ) -> dict[str, object]:
     mode = mode.lower()
     if mode not in {"dynamic", "tf", "mr"}:
@@ -91,12 +156,15 @@ def walk_forward(
     spec = get_market(ticker)
     bpy = bars_per_year(ticker)
     is_bars = int(T_years * bpy)
-    oos_bars = int(tau_quarters * bpy / 4)
+    tau_value = int(tau_quarters)
+    oos_bars = _tau_bars(ticker, tau_value, tau_unit)
+    tau_text = _tau_label(tau_value, tau_unit)
 
     if verbose:
         print(
             f"Walk-Forward [{ticker.upper()}] mode={mode}: "
-            f"IS={T_years}yr ({is_bars:,} bars), OOS={tau_quarters}Q ({oos_bars:,} bars)"
+            f"IS={T_years}yr ({is_bars:,} bars), OOS={tau_text} ({oos_bars:,} bars), "
+            f"cost={float(cost_multiplier):.2f}x"
         )
 
     idx = 0
@@ -121,7 +189,16 @@ def walk_forward(
             family = mode
 
         family_grid = tf_grid if family == "tf" else mr_grid
-        best_is = evaluate_family(df, ticker, family, family_grid, eval_start=is_start, eval_end=is_end)
+        best_is = evaluate_family(
+            df,
+            ticker,
+            family,
+            family_grid,
+            eval_start=is_start,
+            eval_end=is_end,
+            round_turn_cost=round_turn_cost,
+            cost_multiplier=cost_multiplier,
+        )
         if best_is.get("error"):
             if verbose:
                 print(f"  Period {period}: no valid {family} configuration on IS")
@@ -130,7 +207,16 @@ def walk_forward(
             continue
 
         best_params = dict(best_is["params"])
-        best_oos = run_backtest(df, ticker, family, best_params, eval_start=oos_start, eval_end=oos_end)
+        best_oos = run_backtest(
+            df,
+            ticker,
+            family,
+            best_params,
+            eval_start=oos_start,
+            eval_end=oos_end,
+            round_turn_cost=round_turn_cost,
+            cost_multiplier=cost_multiplier,
+        )
         if best_oos.get("error"):
             if verbose:
                 print(f"  Period {period}: OOS evaluation failed for {family}")
@@ -150,6 +236,11 @@ def walk_forward(
             "Period": period,
             "Family": family,
             "Mode": mode,
+            "TauValue": tau_value,
+            "TauUnit": tau_unit,
+            "TauLabel": tau_text,
+            "CostMultiplier": float(cost_multiplier),
+            "RoundTurnCost": float(best_oos.get("RoundTurnCost", np.nan)),
             "IS_start": df.index[is_start],
             "IS_end": df.index[is_end - 1],
             "OOS_start": df.index[oos_start],
@@ -203,8 +294,14 @@ def walk_forward(
         "params": params_df,
         "equity": equity_df,
         "ledger": ledger_df,
+        "stability": parameter_stability_tables(params_df),
         "mode": mode,
         "ticker": ticker.upper(),
+        "tau_value": tau_value,
+        "tau_unit": tau_unit,
+        "tau_label": tau_text,
+        "cost_multiplier": float(cost_multiplier),
+        "round_turn_cost": float(params_df["RoundTurnCost"].iloc[0]) if "RoundTurnCost" in params_df.columns and len(params_df) else np.nan,
     }
 
 
@@ -216,11 +313,14 @@ def walk_forward_surface(
     mr_grid: dict[str, np.ndarray] | None = None,
     T_values: list[int] | None = None,
     tau_values: list[int] | None = None,
+    tau_unit: str = "quarters",
     quick: bool = True,
     verbose: bool = False,
+    round_turn_cost: float | None = None,
+    cost_multiplier: float = 1.0,
 ) -> pd.DataFrame:
     if T_values is None:
-        T_values = [1, 2, 3, 4, 5, 6]
+        T_values = list(range(1, 11))
     if tau_values is None:
         tau_values = [1, 2, 3, 4]
 
@@ -235,12 +335,15 @@ def walk_forward_surface(
                 mr_grid=mr_grid,
                 T_years=T,
                 tau_quarters=tau,
+                tau_unit=tau_unit,
                 quick=quick,
                 verbose=verbose,
+                round_turn_cost=round_turn_cost,
+                cost_multiplier=cost_multiplier,
             )
             params_df = bundle["params"]
             if len(params_df) == 0:
-                rows.append({"T": T, "tau": tau, "error": True})
+                rows.append({"T": T, "tau": tau, "tau_unit": tau_unit, "tau_label": _tau_label(tau, tau_unit), "error": True})
                 continue
             avg_is = float(params_df["IS_Objective"].mean())
             avg_oos = float(params_df["OOS_Objective"].mean())
@@ -251,12 +354,16 @@ def walk_forward_surface(
                 {
                     "T": T,
                     "tau": tau,
+                    "tau_unit": tau_unit,
+                    "tau_label": _tau_label(tau, tau_unit),
                     "n": int(len(params_df)),
                     "avg_is": avg_is,
                     "avg_oos": avg_oos,
                     "decay": decay,
                     "total_oos": total_oos,
                     "dominant_family": mode_family,
+                    "cost_multiplier": float(cost_multiplier),
+                    "round_turn_cost": float(params_df["RoundTurnCost"].iloc[0]) if "RoundTurnCost" in params_df.columns else np.nan,
                     "error": False,
                 }
             )
