@@ -19,13 +19,12 @@
 //
 // Default round-turn transaction-cost assumptions:
 // - TY:  $18.625 / contract round-turn
-//        = 1 CME/CBOT 10Y Treasury tick ($15.625) plus a small $3 fee cushion.
-// - BTC: $50.00 / contract round-turn
-//        = 2 CME BTC ticks at $25 each.
+//        = the TF Data file's official Slpg for TY.
+// - BTC: $25.00 / contract round-turn
+//        = the TF Data file's official Slpg for BTC.
 //
-// These are conservative defaults intended to match the Python engine's
-// existing slippage assumptions while exposing CLI overrides if the group
-// wants to plug in broker-specific or TCA-calibrated costs later.
+// These defaults now mirror the assignment spreadsheet directly while still
+// exposing CLI overrides if the group wants a later sensitivity study.
 
 namespace fs = std::filesystem;
 
@@ -285,6 +284,7 @@ struct CliOptions {
     fs::path data_root = "/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project/data";
     fs::path out_dir = "/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project/results_cpp";
     std::string mode = "both";
+    std::string grid_mode = "quick";
     int is_years = 4;
     int oos_quarters = 1;
     int reference_bars_back = 17001;
@@ -433,7 +433,7 @@ MarketSpec make_ty() {
     spec.quick_L = {960, 1280, 1440, 1600, 1920, 2240, 3200};
     spec.quick_S = {0.01, 0.015, 0.02, 0.03, 0.04};
     spec.cost_note =
-        "Default TY round-turn cost = $18.625 = one CME/CBOT 10Y tick ($15.625) plus a small fee cushion.";
+        "Official TF Data TY round-turn cost = $18.625 per contract.";
     return spec;
 }
 
@@ -442,8 +442,8 @@ MarketSpec make_btc() {
     spec.ticker = "BTC";
     spec.name = "Bitcoin";
     spec.point_value = 5.0;
-    spec.tick_value = 25.0;
-    spec.round_turn_cost = 50.0;
+    spec.tick_value = 5.0;
+    spec.round_turn_cost = 25.0;
     spec.initial_equity = 100000.0;
     spec.use_session_filter = false;
     spec.session_start_min = 0;
@@ -456,8 +456,40 @@ MarketSpec make_btc() {
     spec.quick_L = {288, 576, 864, 1152, 1440, 1728, 2304};
     spec.quick_S = {0.01, 0.02, 0.03, 0.04, 0.05, 0.06};
     spec.cost_note =
-        "Default BTC round-turn cost = $50.00 = two CME BTC ticks ($25 each), a conservative liquid-hours baseline.";
+        "Official TF Data BTC round-turn cost = $25.00 per contract.";
     return spec;
+}
+
+std::vector<int> strict_L_grid() {
+    std::vector<int> out;
+    out.reserve(951);
+    for (int value = 500; value <= 10000; value += 10) {
+        out.push_back(value);
+    }
+    return out;
+}
+
+std::vector<double> strict_S_grid() {
+    std::vector<double> out;
+    out.reserve(96);
+    for (int milli = 5; milli <= 100; ++milli) {
+        out.push_back(static_cast<double>(milli) / 1000.0);
+    }
+    return out;
+}
+
+std::vector<int> active_L_grid(const MarketSpec& spec, const CliOptions& options) {
+    if (lower(options.grid_mode) == "strict") {
+        return strict_L_grid();
+    }
+    return spec.quick_L;
+}
+
+std::vector<double> active_S_grid(const MarketSpec& spec, const CliOptions& options) {
+    if (lower(options.grid_mode) == "strict") {
+        return strict_S_grid();
+    }
+    return spec.quick_S;
 }
 
 MarketSpec get_market_spec(const std::string& ticker, const CliOptions& options) {
@@ -1119,6 +1151,8 @@ BacktestResult run_tf_backtest(
 GridSearchResult evaluate_tf_grid(
     const std::vector<Bar>& bars,
     const MarketSpec& spec,
+    const std::vector<int>& L_values,
+    const std::vector<double>& S_values,
     int eval_start,
     int eval_end
 ) {
@@ -1126,8 +1160,8 @@ GridSearchResult evaluate_tf_grid(
     double best_objective = -std::numeric_limits<double>::infinity();
     double best_profit = -std::numeric_limits<double>::infinity();
 
-    for (int L : spec.quick_L) {
-        for (double S : spec.quick_S) {
+    for (int L : L_values) {
+        for (double S : S_values) {
             ++out.tested;
             const TfParams params{L, S};
             BacktestResult result = run_tf_backtest(bars, spec, params, eval_start, eval_end);
@@ -1147,7 +1181,12 @@ GridSearchResult evaluate_tf_grid(
     return out;
 }
 
-TfParams choose_story_config(const MarketSpec& spec, const std::vector<PeriodRow>& periods) {
+TfParams choose_story_config(
+    const MarketSpec& spec,
+    const std::vector<PeriodRow>& periods,
+    const std::vector<int>& L_values,
+    const std::vector<double>& S_values
+) {
     std::map<std::pair<int, int>, int> counts;
     for (const PeriodRow& row : periods) {
         const int s_key = static_cast<int>(std::llround(row.S * 1000000.0));
@@ -1163,8 +1202,8 @@ TfParams choose_story_config(const MarketSpec& spec, const std::vector<PeriodRow
         return TfParams{best_it->first.first, static_cast<double>(best_it->first.second) / 1000000.0};
     }
     return TfParams{
-        nearest_int(spec.quick_L, spec.professor_tau),
-        nearest_double(spec.quick_S, spec.professor_stop),
+        nearest_int(L_values, spec.professor_tau),
+        nearest_double(S_values, spec.professor_stop),
     };
 }
 
@@ -1370,9 +1409,11 @@ ReferenceBundle run_reference_split(
     double best_objective = -std::numeric_limits<double>::infinity();
     double best_profit = -std::numeric_limits<double>::infinity();
     bool found = false;
+    const std::vector<int> L_values = active_L_grid(spec, options);
+    const std::vector<double> S_values = active_S_grid(spec, options);
 
-    for (int L : spec.quick_L) {
-        for (double S : spec.quick_S) {
+    for (int L : L_values) {
+        for (double S : S_values) {
             const TfParams params{L, S};
             BacktestResult result = run_tf_backtest(
                 bars,
@@ -1497,6 +1538,7 @@ ReferenceBundle run_reference_split(
 WalkForwardBundle run_walk_forward(
     const std::vector<Bar>& bars,
     const MarketSpec& spec,
+    const CliOptions& options,
     int is_years,
     int oos_quarters,
     bool verbose
@@ -1505,11 +1547,14 @@ WalkForwardBundle run_walk_forward(
     const int bars_per_year = spec.bars_per_session * spec.trading_days_per_year;
     const int is_bars = is_years * bars_per_year;
     const int oos_bars = (oos_quarters * bars_per_year) / 4;
+    const std::vector<int> L_values = active_L_grid(spec, options);
+    const std::vector<double> S_values = active_S_grid(spec, options);
 
     if (verbose) {
         std::cout << "Walk-Forward [" << spec.ticker << "] "
                   << "IS=" << is_years << "y (" << is_bars << " bars), "
-                  << "OOS=" << oos_quarters << "Q (" << oos_bars << " bars)\n";
+                  << "OOS=" << oos_quarters << "Q (" << oos_bars << " bars), "
+                  << "grid=" << options.grid_mode << "\n";
     }
 
     int idx = 0;
@@ -1523,7 +1568,7 @@ WalkForwardBundle run_walk_forward(
         const int oos_start = is_end;
         const int oos_end = oos_start + oos_bars;
 
-        GridSearchResult best_is = evaluate_tf_grid(bars, spec, is_start, is_end);
+        GridSearchResult best_is = evaluate_tf_grid(bars, spec, L_values, S_values, is_start, is_end);
         if (!best_is.valid) {
             if (verbose) {
                 std::cout << "  Period " << period << ": no valid IS configuration\n";
@@ -1893,6 +1938,8 @@ CliOptions parse_cli(int argc, char** argv) {
             options.out_dir = require_value(arg);
         } else if (arg == "--mode") {
             options.mode = lower(require_value(arg));
+        } else if (arg == "--grid-mode") {
+            options.grid_mode = lower(require_value(arg));
         } else if (arg == "--markets") {
             options.markets = split_list(require_value(arg));
         } else if (arg == "--is-years") {
@@ -1923,6 +1970,7 @@ CliOptions parse_cli(int argc, char** argv) {
                 << "  --data-root <path>       Input CSV directory\n"
                 << "  --out-dir <path>         Output directory for CSV files\n"
                 << "  --mode <both|walkforward|reference>\n"
+                << "  --grid-mode <quick|strict>\n"
                 << "  --markets <TY,BTC>       Markets to run, comma-separated\n"
                 << "  --is-years <int>         In-sample years per walk-forward period\n"
                 << "  --oos-quarters <int>     Out-of-sample quarters per period\n"
@@ -1942,6 +1990,9 @@ CliOptions parse_cli(int argc, char** argv) {
     }
     if (options.mode != "both" && options.mode != "walkforward" && options.mode != "reference") {
         throw std::runtime_error("mode must be one of: both, walkforward, reference");
+    }
+    if (options.grid_mode != "quick" && options.grid_mode != "strict") {
+        throw std::runtime_error("grid-mode must be one of: quick, strict");
     }
     if (!(options.reference_split_ratio > 0.0 && options.reference_split_ratio < 1.0)) {
         throw std::runtime_error("reference-split-ratio must be strictly between 0 and 1");
@@ -1970,11 +2021,14 @@ int main(int argc, char** argv) {
                 WalkForwardBundle wf = run_walk_forward(
                     bars,
                     spec,
+                    options,
                     options.is_years,
                     options.oos_quarters,
                     options.verbose
                 );
-                const TfParams story_cfg = choose_story_config(spec, wf.periods);
+                const std::vector<int> story_L = active_L_grid(spec, options);
+                const std::vector<double> story_S = active_S_grid(spec, options);
+                const TfParams story_cfg = choose_story_config(spec, wf.periods, story_L, story_S);
                 BacktestResult full_sample = run_tf_backtest(
                     bars,
                     spec,

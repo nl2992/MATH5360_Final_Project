@@ -23,9 +23,11 @@ from mafn_engine import apply_columbia_theme, bars_per_year
 class LoadedRun:
     market: str
     run_kind: str
+    market_dir: Path
     series: pd.DataFrame
     summary: pd.DataFrame
     config: pd.DataFrame | None
+    trades: pd.DataFrame | None
 
 
 def parse_args() -> argparse.Namespace:
@@ -84,20 +86,37 @@ def load_run(input_dir: Path, market: str, run_kind: str) -> LoadedRun:
         series = _read_csv(market_dir / f"{market}_tf_reference_series.csv")
         summary = _read_csv(market_dir / f"{market}_tf_reference_summary.csv")
         config = _read_csv(market_dir / f"{market}_tf_reference_config.csv")
+        trades = _read_csv(market_dir / f"{market}_tf_reference_trades.csv") if (market_dir / f"{market}_tf_reference_trades.csv").exists() else None
     elif actual_kind == "walkforward":
         series = _read_csv(market_dir / f"{market}_tf_oos_returns.csv")
-        summary = summary_global[(summary_global["Market"] == market) & (summary_global["RunType"] == "walkforward_oos")].copy()
+        if {"Market", "RunType"}.issubset(summary_global.columns):
+            summary = summary_global[(summary_global["Market"] == market) & (summary_global["RunType"] == "walkforward_oos")].copy()
+        else:
+            summary = pd.DataFrame()
         config = None
+        trades = _read_csv(market_dir / f"{market}_tf_oos_trades.csv") if (market_dir / f"{market}_tf_oos_trades.csv").exists() else None
     else:
         series = _read_csv(market_dir / f"{market}_tf_fullsample_returns.csv")
-        summary = summary_global[(summary_global["Market"] == market) & (summary_global["RunType"] == "full_sample")].copy()
+        if {"Market", "RunType"}.issubset(summary_global.columns):
+            summary = summary_global[(summary_global["Market"] == market) & (summary_global["RunType"] == "full_sample")].copy()
+        else:
+            summary = pd.DataFrame()
         config = None
+        trades = _read_csv(market_dir / f"{market}_tf_fullsample_trades.csv") if (market_dir / f"{market}_tf_fullsample_trades.csv").exists() else None
 
     if "DateTime" in series.columns:
         series["DateTime"] = pd.to_datetime(series["DateTime"])
     if "Segment" not in series.columns:
         series["Segment"] = "full_sample"
-    return LoadedRun(market=market, run_kind=actual_kind, series=series, summary=summary, config=config)
+    return LoadedRun(
+        market=market,
+        run_kind=actual_kind,
+        market_dir=market_dir,
+        series=series,
+        summary=summary,
+        config=config,
+        trades=trades,
+    )
 
 
 def compute_growth(returns: pd.Series) -> pd.Series:
@@ -194,6 +213,38 @@ def save_cost_turnover_plot(series: pd.DataFrame, title: str, path: Path) -> Non
     plt.close(fig)
 
 
+def save_parameter_stability_plot(periods: pd.DataFrame, market: str, path: Path) -> None:
+    fig, axes = plt.subplots(2, 1, figsize=(13, 9), sharex=True)
+    x = periods["Period"].astype(int).to_numpy()
+    axes[0].plot(x, periods["L"].astype(float), color="#012169", marker="o")
+    axes[0].set_title(f"{market} selected TF parameters over time")
+    axes[0].set_ylabel("L")
+    axes[1].plot(x, periods["S"].astype(float), color="#E08119", marker="o")
+    axes[1].set_ylabel("S")
+    axes[1].set_xlabel("Walk-forward period")
+    fig.tight_layout()
+    fig.savefig(path, dpi=180)
+    plt.close(fig)
+
+
+def save_parameter_frequency_plot(periods: pd.DataFrame, market: str, path: Path) -> None:
+    l_counts = periods["L"].dropna().astype(int).value_counts().sort_index()
+    s_counts = periods["S"].dropna().astype(float).round(6).value_counts().sort_index()
+    fig, axes = plt.subplots(2, 1, figsize=(13, 9))
+    axes[0].bar(l_counts.index.astype(str), l_counts.values, color="#75AADB")
+    axes[0].set_title(f"{market} parameter frequency")
+    axes[0].set_ylabel("count")
+    axes[0].set_xlabel("L")
+    axes[1].bar([f"{value:.3f}" for value in s_counts.index], s_counts.values, color="#E08119")
+    axes[1].set_ylabel("count")
+    axes[1].set_xlabel("S")
+    for ax in axes:
+        ax.tick_params(axis="x", labelrotation=45)
+    fig.tight_layout()
+    fig.savefig(path, dpi=180)
+    plt.close(fig)
+
+
 def format_assumptions(run: LoadedRun) -> list[str]:
     lines = [
         f"Market: {run.market}",
@@ -250,6 +301,29 @@ def build_stats_table(run: LoadedRun, series: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame([stats])
 
 
+def build_trade_stats_table(trades: pd.DataFrame | None) -> pd.DataFrame:
+    if trades is None or len(trades) == 0:
+        return pd.DataFrame([{"TotalTrades": 0}])
+    pnl = trades["NetPnL"].astype(float) if "NetPnL" in trades.columns else trades["net_pnl"].astype(float)
+    winners = pnl[pnl > 0.0]
+    losers = pnl[pnl < 0.0]
+    gross_profit = float(winners.sum()) if len(winners) else 0.0
+    gross_loss = float(-losers.sum()) if len(losers) else 0.0
+    duration_col = "DurationBars" if "DurationBars" in trades.columns else "duration_bars"
+    return pd.DataFrame(
+        [
+            {
+                "TotalTrades": int(len(pnl)),
+                "WinRatePct": float((len(winners) / len(pnl)) * 100.0) if len(pnl) else 0.0,
+                "AvgWinner": float(winners.mean()) if len(winners) else 0.0,
+                "AvgLoser": float(losers.mean()) if len(losers) else 0.0,
+                "ProfitFactor": float(gross_profit / gross_loss) if gross_loss > 0 else np.inf,
+                "AvgDurationBars": float(trades[duration_col].astype(float).mean()) if duration_col in trades.columns else 0.0,
+            }
+        ]
+    )
+
+
 def write_market_report(run: LoadedRun, output_dir: Path) -> pd.DataFrame:
     market_dir = output_dir / run.market
     market_dir.mkdir(parents=True, exist_ok=True)
@@ -259,6 +333,12 @@ def write_market_report(run: LoadedRun, output_dir: Path) -> pd.DataFrame:
     save_underwater_plot(series, f"{run.market} Underwater Curve ({run.run_kind})", market_dir / f"{run.market}_{run.run_kind}_underwater.png")
     save_cost_turnover_plot(series, f"{run.market} Costs and Turnover ({run.run_kind})", market_dir / f"{run.market}_{run.run_kind}_costs_turnover.png")
 
+    periods_path = run.market_dir / f"{run.market}_tf_walkforward_periods.csv"
+    periods = _read_csv(periods_path) if periods_path.exists() else None
+    if periods is not None and len(periods):
+        save_parameter_stability_plot(periods, run.market, market_dir / f"{run.market}_walkforward_parameter_stability.png")
+        save_parameter_frequency_plot(periods, run.market, market_dir / f"{run.market}_walkforward_parameter_frequency.png")
+
     if run.run_kind == "reference" and "Segment" in series.columns:
         oos = series[series["Segment"] == "out_of_sample"].copy()
         if len(oos):
@@ -267,24 +347,38 @@ def write_market_report(run: LoadedRun, output_dir: Path) -> pd.DataFrame:
             save_underwater_plot(oos, f"{run.market} OOS Underwater (reference split)", market_dir / f"{run.market}_reference_oos_underwater.png")
 
     stats_df = build_stats_table(run, series)
+    trade_stats_df = build_trade_stats_table(run.trades)
     stats_df.to_csv(market_dir / f"{run.market}_{run.run_kind}_derived_stats.csv", index=False)
+    trade_stats_df.to_csv(market_dir / f"{run.market}_{run.run_kind}_trade_stats.csv", index=False)
 
     assumptions = format_assumptions(run)
     report_lines = [f"# {run.market} C++ Backtest Report", ""]
     report_lines.extend([f"- {line}" for line in assumptions])
     report_lines.append("")
-    report_lines.append("## Derived Stats")
+    report_lines.append("## Headline Metrics (Equity Curve)")
     report_lines.append("")
     try:
         report_lines.append(stats_df.to_markdown(index=False))
     except Exception:
         report_lines.append(stats_df.to_csv(index=False))
     report_lines.append("")
+    report_lines.append("These are the headline metrics because the equity curve is marked to market bar by bar. Closed-trade statistics are useful, but secondary.")
+    report_lines.append("")
+    report_lines.append("## Secondary Trade Metrics")
+    report_lines.append("")
+    try:
+        report_lines.append(trade_stats_df.to_markdown(index=False))
+    except Exception:
+        report_lines.append(trade_stats_df.to_csv(index=False))
+    report_lines.append("")
     report_lines.append("## Files")
     report_lines.append("")
     report_lines.append(f"- Growth of $1: `{run.market}_{run.run_kind}_growth_of_1.png`")
     report_lines.append(f"- Underwater: `{run.market}_{run.run_kind}_underwater.png`")
     report_lines.append(f"- Costs and turnover: `{run.market}_{run.run_kind}_costs_turnover.png`")
+    if periods is not None and len(periods):
+        report_lines.append(f"- Parameter stability: `{run.market}_walkforward_parameter_stability.png`")
+        report_lines.append(f"- Parameter frequency: `{run.market}_walkforward_parameter_frequency.png`")
     if run.run_kind == "reference":
         report_lines.append(f"- Reference OOS growth: `{run.market}_reference_oos_growth_of_1.png`")
         report_lines.append(f"- Reference OOS underwater: `{run.market}_reference_oos_underwater.png`")

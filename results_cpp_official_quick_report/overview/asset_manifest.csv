@@ -1,0 +1,14 @@
+Asset,Section,Purpose,Suggested Slide Use
+two_market_diagnostics_reference.png,Diagnostics,Reference-horizon VR + Push-Response panels for TY and BTC.,Time-series story
+two_market_diagnostics_showcase.png,Diagnostics,Showcase-horizon diagnostics emphasizing the later cleaner BTC PR view.,Time-series story / appendix
+overview/vr_recovery_summary.png,Overview,VR curves with trough and marked longer-horizon recovery points.,Explain TY long-horizon TF
+overview/push_response_rho_summary.png,Overview,Short/reference/showcase push-response rho values.,Explain PR sign changes
+overview/oos_decay_ratios.png,Overview,"OOS/full decay for profit, RoA, Sharpe, and trades.",Performance summary
+overview/reference_vs_walkforward.png,Overview,Compare the single reference split with the rolling assignment OOS run.,Methodology comparison
+overview/transaction_cost_burden.png,Overview,Total cost and cost share of gross profit across canonical runs.,Cost framing
+overview/drawdown_family_comparison.png,Overview,"MaxDD, AvgDD, and CDD across TY/BTC and OOS/full sample.",Risk framing
+overview/cost_sensitivity_overview.png,Overview,"Profit, RoA, and Sharpe under 0x/0.5x/1x/2x cost assumptions.",Robustness
+TY/TY_walkforward_quarterly_panel.png,TY,Quarter-by-quarter TY OOS profit and RoA.,Quarter dynamics
+TY/TY_walkforward_parameter_heatmap.png,TY,Frequency heatmap of chosen TY L/S pairs.,Parameter behavior
+BTC/BTC_walkforward_quarterly_panel.png,BTC,Quarter-by-quarter BTC OOS profit and RoA.,Quarter dynamics
+BTC/BTC_walkforward_parameter_heatmap.png,BTC,Frequency heatmap of chosen BTC L/S pairs.,Parameter behavior

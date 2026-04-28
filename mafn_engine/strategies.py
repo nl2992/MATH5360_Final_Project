@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from numba import jit
 
-from .config import get_market
+from .config import get_market, resolve_round_turn_cost
 
 
 LEDGER_COLUMNS = [
@@ -544,6 +544,7 @@ def _post_process_result(
     eval_start: int,
     eval_end: int,
     warmup_bars: int,
+    round_turn_cost: float,
     output: tuple,
 ) -> dict[str, object]:
     if len(output) == 13:
@@ -615,6 +616,7 @@ def _post_process_result(
         "EvalStart": int(eval_start),
         "EvalEnd": int(eval_end),
         "WarmupBars": int(warmup_bars),
+        "RoundTurnCost": float(round_turn_cost),
         "Ledger": ledger,
     }
 
@@ -629,8 +631,11 @@ def run_tf_backtest(
     warmup_bars: int | None = None,
     bars_back: int | None = None,
     rebase_at_eval_start: bool = True,
+    round_turn_cost: float | None = None,
+    cost_multiplier: float = 1.0,
 ) -> dict[str, object]:
     spec = get_market(ticker)
+    resolved_cost = resolve_round_turn_cost(ticker, round_turn_cost, cost_multiplier)
     n = len(df)
     if eval_start is None:
         eval_start = 0
@@ -656,7 +661,7 @@ def run_tf_backtest(
         df["Close"].values[slice_start:slice_end],
         int(L),
         float(S),
-        float(spec.slpg),
+        float(resolved_cost),
         float(spec.PV),
         float(spec.E0),
         int(bars_back),
@@ -671,6 +676,7 @@ def run_tf_backtest(
         eval_start,
         eval_end,
         warmup_bars,
+        float(resolved_cost),
         output,
     )
 
@@ -686,8 +692,11 @@ def run_mr_backtest(
     eval_start: int | None = None,
     eval_end: int | None = None,
     warmup_bars: int | None = None,
+    round_turn_cost: float | None = None,
+    cost_multiplier: float = 1.0,
 ) -> dict[str, object]:
     spec = get_market(ticker)
+    resolved_cost = resolve_round_turn_cost(ticker, round_turn_cost, cost_multiplier)
     n = len(df)
     if eval_start is None:
         eval_start = 0
@@ -725,7 +734,7 @@ def run_mr_backtest(
         int(VolLen),
         int(MALen),
         float(StpPct),
-        float(spec.slpg),
+        float(resolved_cost),
         float(spec.PV),
         float(spec.E0),
         int(bars_back),
@@ -745,6 +754,7 @@ def run_mr_backtest(
         eval_start,
         eval_end,
         warmup_bars,
+        float(resolved_cost),
         output,
     )
 
@@ -757,6 +767,8 @@ def run_backtest(
     eval_start: int | None = None,
     eval_end: int | None = None,
     warmup_bars: int | None = None,
+    round_turn_cost: float | None = None,
+    cost_multiplier: float = 1.0,
 ) -> dict[str, object]:
     family = family.lower()
     if family == "tf":
@@ -768,6 +780,8 @@ def run_backtest(
             eval_start=eval_start,
             eval_end=eval_end,
             warmup_bars=warmup_bars,
+            round_turn_cost=round_turn_cost,
+            cost_multiplier=cost_multiplier,
         )
     if family == "mr":
         return run_mr_backtest(
@@ -781,6 +795,8 @@ def run_backtest(
             eval_start=eval_start,
             eval_end=eval_end,
             warmup_bars=warmup_bars,
+            round_turn_cost=round_turn_cost,
+            cost_multiplier=cost_multiplier,
         )
     raise ValueError(f"Unknown family {family!r}")
 
@@ -816,13 +832,24 @@ def evaluate_family(
     grid: dict[str, np.ndarray],
     eval_start: int,
     eval_end: int,
+    round_turn_cost: float | None = None,
+    cost_multiplier: float = 1.0,
 ) -> dict[str, object]:
     best_result: dict[str, object] | None = None
     best_obj = -np.inf
     tested = 0
 
     for params in _iter_family_grid(family, grid):
-        result = run_backtest(df, ticker, family, params, eval_start=eval_start, eval_end=eval_end)
+        result = run_backtest(
+            df,
+            ticker,
+            family,
+            params,
+            eval_start=eval_start,
+            eval_end=eval_end,
+            round_turn_cost=round_turn_cost,
+            cost_multiplier=cost_multiplier,
+        )
         if result.get("error"):
             continue
         tested += 1

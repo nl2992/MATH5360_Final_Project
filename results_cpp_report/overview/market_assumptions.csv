@@ -1,0 +1,3 @@
+Market,Description,Exchange,Point Value,Round-Turn Cost,Bars / Session,Bars / Year,Session Filter,Cost Note
+TY,10-Year Treasury,CBOT-CME,1000,18.625,80,20160,Liquid session only,Official TF Data TY round-turn cost = $18.625 per contract.
+BTC,Bitcoin,CME,5,25.0,288,105120,Full series,Official TF Data BTC round-turn cost = $25.00 per contract.
