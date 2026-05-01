@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from .config import default_tf_grid
+from .config import default_tf_grid, infer_bar_minutes_from_index
 from .strategies import run_tf_backtest
 
 
@@ -134,7 +134,8 @@ def evaluate_reference_tf_grid(
     rebase_at_eval_start: bool = False,
     split_ratio: float = 0.70,
 ) -> pd.DataFrame:
-    tf_grid = default_tf_grid(ticker, quick=True) if tf_grid is None else tf_grid
+    bar_minutes = infer_bar_minutes_from_index(df.index)
+    tf_grid = default_tf_grid(ticker, quick=True, bar_minutes=bar_minutes) if tf_grid is None else tf_grid
     if in_sample is None or out_sample is None:
         auto_is, auto_oos = derive_reference_windows(df, split_ratio=split_ratio)
         in_sample = (auto_is.start, auto_is.end)

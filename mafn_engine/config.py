@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import matplotlib as mpl
 from matplotlib.colors import LinearSegmentedColormap
 import numpy as np
+import pandas as pd
 
 
 @dataclass(frozen=True)
@@ -87,6 +88,7 @@ def _market(
 
 TF_DATA_SOURCE = "/Users/nigelli/Downloads/TF Data (1).xls"
 CHINA_TRCOST_SOURCE = "/Users/nigelli/Downloads/TrCostsChina 03-07-2019.xls"
+DEFAULT_BAR_MINUTES = 5
 
 MARKETS: dict[str, MarketSpec] = {
     "BO": _market("BO", "Soybean Oil", "CBOT-CME", 600, 39, 6, start_price=30, cost_source=TF_DATA_SOURCE),
@@ -127,10 +129,12 @@ MARKETS: dict[str, MarketSpec] = {
         "CME",
         5,
         25,
-        5,
-        session_minutes=1440,
+        25,
+        session_start="17:00",
+        session_end="16:00",
+        session_minutes=1380,
         trading_days_per_year=365,
-        use_session_filter=False,
+        use_session_filter=True,
         start_price=20_000,
         synthetic_sigma=0.0015,
         cost_source=TF_DATA_SOURCE,
@@ -181,43 +185,78 @@ def apply_columbia_theme() -> None:
         }
     )
 
+def infer_bar_minutes_from_index(index: pd.Index | pd.DatetimeIndex) -> int:
+    if len(index) < 2:
+        return DEFAULT_BAR_MINUTES
+    if not isinstance(index, pd.DatetimeIndex):
+        index = pd.DatetimeIndex(index)
+    diffs = index.to_series().diff().dropna().dt.total_seconds().div(60.0)
+    diffs = diffs[(diffs > 0) & (diffs <= 120)]
+    if len(diffs) == 0:
+        return DEFAULT_BAR_MINUTES
+    return int(round(float(diffs.mode().iloc[0])))
 
-def bars_per_year(ticker: str) -> int:
+
+def active_bars_per_session(
+    ticker: str,
+    bar_minutes: int | None = None,
+    df: pd.DataFrame | None = None,
+) -> int:
     spec = get_market(ticker)
-    return spec.bars_per_session * spec.trading_days_per_year
+    resolved = int(bar_minutes or (infer_bar_minutes_from_index(df.index) if df is not None else DEFAULT_BAR_MINUTES))
+    return max(1, int(round(spec.session_minutes / resolved)))
 
 
-def bars_to_time(k: int, ticker: str) -> str:
+def bars_per_year(
+    ticker: str,
+    bar_minutes: int | None = None,
+    df: pd.DataFrame | None = None,
+) -> int:
     spec = get_market(ticker)
-    mins = k * 5
+    return active_bars_per_session(ticker, bar_minutes=bar_minutes, df=df) * spec.trading_days_per_year
+
+
+def bars_to_time(
+    k: int,
+    ticker: str,
+    bar_minutes: int | None = None,
+    df: pd.DataFrame | None = None,
+) -> str:
+    spec = get_market(ticker)
+    resolved = int(bar_minutes or (infer_bar_minutes_from_index(df.index) if df is not None else DEFAULT_BAR_MINUTES))
+    mins = k * resolved
     if mins < 60:
         return f"{mins}min"
     if mins < spec.session_minutes:
         return f"{mins / 60:.1f}hr"
     if spec.ticker == "BTC":
-        return f"{mins / 1440:.1f}d"
+        return f"{mins / spec.session_minutes:.1f}d"
     return f"{mins / spec.session_minutes:.1f}sess"
 
 
-def professor_reference_tau(ticker: str) -> int:
+def _scale_from_5min(values: np.ndarray, bar_minutes: int) -> np.ndarray:
+    return np.maximum(1, np.rint(values.astype(float) * DEFAULT_BAR_MINUTES / float(bar_minutes)).astype(int))
+
+
+def professor_reference_tau(ticker: str, bar_minutes: int = DEFAULT_BAR_MINUTES) -> int:
     spec = get_market(ticker)
+    base = spec.bars_per_session
     if spec.ticker == "TY":
-        return 1440
-    if spec.ticker == "BTC":
-        return 1152
-    return spec.bars_per_session
+        base = 1440
+    elif spec.ticker == "BTC":
+        base = 1104
+    return int(_scale_from_5min(np.array([base], dtype=int), int(bar_minutes))[0])
 
 
-def professor_showcase_tau(ticker: str) -> int:
+def professor_showcase_tau(ticker: str, bar_minutes: int = DEFAULT_BAR_MINUTES) -> int:
     spec = get_market(ticker)
-    if spec.ticker == "TY":
-        return 1440
+    base = professor_reference_tau(ticker, bar_minutes=DEFAULT_BAR_MINUTES)
     if spec.ticker == "BTC":
-        return 3456
-    return professor_reference_tau(ticker)
+        base = 3312
+    return int(_scale_from_5min(np.array([base], dtype=int), int(bar_minutes))[0])
 
 
-def professor_dense_q_grid(ticker: str) -> np.ndarray:
+def professor_dense_q_grid(ticker: str, bar_minutes: int = DEFAULT_BAR_MINUTES) -> np.ndarray:
     spec = get_market(ticker)
     if spec.ticker == "TY":
         q_values = np.unique(
@@ -227,39 +266,39 @@ def professor_dense_q_grid(ticker: str) -> np.ndarray:
                 np.array([80, 160, 400, 800, 1200, 1440, 1600, 2000, 2400, 2880, 3360, 3840, 4320, 4800], dtype=int),
             ]
         )
-        return q_values.astype(int)
+        return _scale_from_5min(q_values.astype(int), int(bar_minutes))
     if spec.ticker == "BTC":
         q_values = np.unique(
             np.r_[
                 1,
-                np.arange(2, 5761, 24, dtype=int),
-                np.array([288, 576, 864, 1152, 1440, 1728, 2304, 2880, 3456, 4608, 5760], dtype=int),
+                np.arange(2, 5521, 24, dtype=int),
+                np.array([276, 552, 828, 1104, 1380, 1656, 2208, 2760, 3312, 4140, 5520], dtype=int),
             ]
         )
-        return q_values.astype(int)
+        return _scale_from_5min(q_values.astype(int), int(bar_minutes))
     q_values = np.unique(np.r_[1, np.arange(2, spec.bars_per_session * 10 + 1, max(2, spec.bars_per_session // 4), dtype=int)])
-    return q_values.astype(int)
+    return _scale_from_5min(q_values.astype(int), int(bar_minutes))
 
 
-def default_tf_grid(ticker: str, quick: bool = True) -> dict[str, np.ndarray]:
+def default_tf_grid(ticker: str, quick: bool = True, bar_minutes: int = DEFAULT_BAR_MINUTES) -> dict[str, np.ndarray]:
     ticker = ticker.upper()
     if quick:
         if ticker == "BTC":
             return {
-                "L": np.array([288, 576, 864, 1152, 1440, 1728, 2304], dtype=int),
+                "L": _scale_from_5min(np.array([276, 552, 828, 1104, 1380, 1656, 2208], dtype=int), int(bar_minutes)),
                 "S": np.arange(0.01, 0.07, 0.01, dtype=float),
             }
         if ticker == "TY":
             return {
-                "L": np.array([960, 1280, 1440, 1600, 1920, 2240, 3200], dtype=int),
+                "L": _scale_from_5min(np.array([960, 1280, 1440, 1600, 1920, 2240, 3200], dtype=int), int(bar_minutes)),
                 "S": np.array([0.01, 0.015, 0.02, 0.03, 0.04], dtype=float),
             }
         return {
-            "L": np.arange(1000, 10001, 1000, dtype=int),
+            "L": _scale_from_5min(np.arange(1000, 10001, 1000, dtype=int), int(bar_minutes)),
             "S": np.arange(0.01, 0.06, 0.01, dtype=float),
         }
     return {
-        "L": np.arange(500, 10001, 10, dtype=int),
+        "L": _scale_from_5min(np.arange(500, 10001, 10, dtype=int), int(bar_minutes)),
         "S": np.arange(0.005, 0.101, 0.001, dtype=float),
     }
 

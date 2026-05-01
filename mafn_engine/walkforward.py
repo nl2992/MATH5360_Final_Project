@@ -5,7 +5,7 @@ from collections import Counter
 import numpy as np
 import pandas as pd
 
-from .config import bars_per_year, default_mr_grid, default_tf_grid, get_market
+from .config import bars_per_year, default_mr_grid, default_tf_grid, get_market, infer_bar_minutes_from_index
 from .diagnostics import choose_regime_family, run_diagnostics
 from .strategies import evaluate_family, run_backtest
 
@@ -15,9 +15,10 @@ def _normalise_grids(
     tf_grid: dict[str, np.ndarray] | None = None,
     mr_grid: dict[str, np.ndarray] | None = None,
     quick: bool = True,
+    bar_minutes: int = 5,
 ) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
     if tf_grid is None:
-        tf_grid = default_tf_grid(ticker, quick=quick)
+        tf_grid = default_tf_grid(ticker, quick=quick, bar_minutes=bar_minutes)
     if mr_grid is None:
         mr_grid = default_mr_grid(ticker, quick=quick)
     return tf_grid, mr_grid
@@ -35,13 +36,20 @@ def _concat_oos_equity(
     return pd.DataFrame({"OOS_PnL_cum": cum_pnl, "OOS_Equity": market_e0 + cum_pnl})
 
 
-def _tau_bars(ticker: str, tau_value: int, tau_unit: str) -> int:
+def _tau_bars(
+    ticker: str,
+    tau_value: int,
+    tau_unit: str,
+    *,
+    bar_minutes: int = 5,
+    df: pd.DataFrame | None = None,
+) -> int:
     spec = get_market(ticker)
     unit = tau_unit.lower().rstrip("s")
     if unit == "quarter":
-        return int(tau_value * bars_per_year(ticker) / 4)
+        return int(tau_value * bars_per_year(ticker, bar_minutes=bar_minutes, df=df) / 4)
     if unit == "month":
-        return int(tau_value * spec.bars_per_session * spec.trading_days_per_year / 12)
+        return int(tau_value * bars_per_year(ticker, bar_minutes=bar_minutes, df=df) / 12)
     raise ValueError("tau_unit must be 'quarters' or 'months'")
 
 
@@ -152,12 +160,19 @@ def walk_forward(
     if mode not in {"dynamic", "tf", "mr"}:
         raise ValueError("mode must be 'dynamic', 'tf', or 'mr'")
 
-    tf_grid, mr_grid = _normalise_grids(ticker, tf_grid=tf_grid, mr_grid=mr_grid, quick=quick)
+    bar_minutes = infer_bar_minutes_from_index(df.index)
+    tf_grid, mr_grid = _normalise_grids(
+        ticker,
+        tf_grid=tf_grid,
+        mr_grid=mr_grid,
+        quick=quick,
+        bar_minutes=bar_minutes,
+    )
     spec = get_market(ticker)
-    bpy = bars_per_year(ticker)
+    bpy = bars_per_year(ticker, bar_minutes=bar_minutes, df=df)
     is_bars = int(T_years * bpy)
     tau_value = int(tau_quarters)
-    oos_bars = _tau_bars(ticker, tau_value, tau_unit)
+    oos_bars = _tau_bars(ticker, tau_value, tau_unit, bar_minutes=bar_minutes, df=df)
     tau_text = _tau_label(tau_value, tau_unit)
 
     if verbose:
@@ -179,14 +194,22 @@ def walk_forward(
         oos_start = is_end
         oos_end = oos_start + oos_bars
 
-        is_df = df.iloc[is_start:is_end]
-        diag_bundle = run_diagnostics(is_df, ticker)
-        diag_choice = dict(diag_bundle["regime_choice"])
-
         if mode == "dynamic":
+            is_df = df.iloc[is_start:is_end]
+            diag_bundle = run_diagnostics(is_df, ticker)
+            diag_choice = dict(diag_bundle["regime_choice"])
             family = str(diag_choice["family"])
         else:
             family = mode
+            diag_choice = {
+                "family": family,
+                "reason": f"forced_{family}",
+                "ambiguous": False,
+                "tf_votes": int(family == "tf"),
+                "mr_votes": int(family == "mr"),
+                "median_vr_shift": np.nan,
+                "median_pr_rho": np.nan,
+            }
 
         family_grid = tf_grid if family == "tf" else mr_grid
         best_is = evaluate_family(

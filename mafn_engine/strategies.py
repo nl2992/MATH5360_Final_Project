@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from numba import jit
 
-from .config import get_market, resolve_round_turn_cost
+from .config import get_market, infer_bar_minutes_from_index, resolve_round_turn_cost
 
 
 LEDGER_COLUMNS = [
@@ -616,6 +616,7 @@ def _post_process_result(
         "EvalStart": int(eval_start),
         "EvalEnd": int(eval_end),
         "WarmupBars": int(warmup_bars),
+        "BarMinutes": int(infer_bar_minutes_from_index(df.index)),
         "RoundTurnCost": float(round_turn_cost),
         "Ledger": ledger,
     }

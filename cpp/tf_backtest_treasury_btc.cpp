@@ -53,6 +53,9 @@ struct MarketSpec {
     int bars_per_session = 0;
     int trading_days_per_year = 0;
     int professor_tau = 0;
+    int active_bar_minutes = 5;
+    int expected_start_key = 0;
+    double min_plausible_price = 0.0;
     double professor_stop = 0.02;
     std::vector<int> quick_L;
     std::vector<double> quick_S;
@@ -283,8 +286,10 @@ struct ReferenceBundle {
 struct CliOptions {
     fs::path data_root = "/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project/data";
     fs::path out_dir = "/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project/results_cpp";
+    fs::path data_file;
     std::string mode = "both";
     std::string grid_mode = "quick";
+    int bar_minutes = 5;
     int is_years = 4;
     int oos_quarters = 1;
     int reference_bars_back = 17001;
@@ -429,6 +434,8 @@ MarketSpec make_ty() {
     spec.bars_per_session = 80;
     spec.trading_days_per_year = 252;
     spec.professor_tau = 1440;
+    spec.expected_start_key = 19830103;
+    spec.min_plausible_price = 50.0;
     spec.professor_stop = 0.02;
     spec.quick_L = {960, 1280, 1440, 1600, 1920, 2240, 3200};
     spec.quick_S = {0.01, 0.015, 0.02, 0.03, 0.04};
@@ -442,29 +449,36 @@ MarketSpec make_btc() {
     spec.ticker = "BTC";
     spec.name = "Bitcoin";
     spec.point_value = 5.0;
-    spec.tick_value = 5.0;
+    spec.tick_value = 25.0;
     spec.round_turn_cost = 25.0;
     spec.initial_equity = 100000.0;
-    spec.use_session_filter = false;
+    spec.use_session_filter = true;
     spec.session_start_min = 0;
-    spec.session_end_min = 24 * 60;
-    spec.session_minutes = 1440;
-    spec.bars_per_session = 288;
+    spec.session_end_min = hhmm_to_minutes("16:00");
+    spec.session_start_min = hhmm_to_minutes("17:00");
+    spec.session_minutes = 23 * 60;
+    spec.bars_per_session = 276;
     spec.trading_days_per_year = 365;
-    spec.professor_tau = 1152;
+    spec.professor_tau = 1104;
+    spec.expected_start_key = 20171218;
+    spec.min_plausible_price = 1000.0;
     spec.professor_stop = 0.03;
-    spec.quick_L = {288, 576, 864, 1152, 1440, 1728, 2304};
+    spec.quick_L = {276, 552, 828, 1104, 1380, 1656, 2208};
     spec.quick_S = {0.01, 0.02, 0.03, 0.04, 0.05, 0.06};
     spec.cost_note =
-        "Official TF Data BTC round-turn cost = $25.00 per contract.";
+        "Official TF Data BTC round-turn cost = $25.00 per contract; Bloomberg DES implies a 5-point minimum tick, or $25 per minimum fluctuation.";
     return spec;
 }
 
-std::vector<int> strict_L_grid() {
+int scale_5m_bars(const int base_bars, const int active_bar_minutes) {
+    return std::max(1, static_cast<int>(std::llround(base_bars * 5.0 / static_cast<double>(active_bar_minutes))));
+}
+
+std::vector<int> strict_L_grid(const int active_bar_minutes) {
     std::vector<int> out;
     out.reserve(951);
     for (int value = 500; value <= 10000; value += 10) {
-        out.push_back(value);
+        out.push_back(scale_5m_bars(value, active_bar_minutes));
     }
     return out;
 }
@@ -480,9 +494,14 @@ std::vector<double> strict_S_grid() {
 
 std::vector<int> active_L_grid(const MarketSpec& spec, const CliOptions& options) {
     if (lower(options.grid_mode) == "strict") {
-        return strict_L_grid();
+        return strict_L_grid(spec.active_bar_minutes);
     }
-    return spec.quick_L;
+    std::vector<int> out;
+    out.reserve(spec.quick_L.size());
+    for (int value : spec.quick_L) {
+        out.push_back(scale_5m_bars(value, spec.active_bar_minutes));
+    }
+    return out;
 }
 
 std::vector<double> active_S_grid(const MarketSpec& spec, const CliOptions& options) {
@@ -518,11 +537,21 @@ bool bar_in_session(const Bar& bar, const MarketSpec& spec) {
         return true;
     }
     const int minute_of_day = hhmm_to_minutes(bar.time);
-    return minute_of_day >= spec.session_start_min && minute_of_day < spec.session_end_min;
+    if (spec.session_start_min <= spec.session_end_min) {
+        return minute_of_day > spec.session_start_min && minute_of_day <= spec.session_end_min;
+    }
+    return minute_of_day > spec.session_start_min || minute_of_day <= spec.session_end_min;
 }
 
-std::vector<Bar> load_bars(const fs::path& data_root, const MarketSpec& spec) {
-    const fs::path path = data_root / (spec.ticker + "-5minHLV.csv");
+std::vector<Bar> load_bars(const fs::path& data_root, const MarketSpec& spec, const CliOptions& options) {
+    fs::path path;
+    if (!options.data_file.empty()) {
+        path = options.data_file;
+    } else if (fs::is_regular_file(data_root)) {
+        path = data_root;
+    } else {
+        path = data_root / (spec.ticker + "-" + std::to_string(options.bar_minutes) + "minHLV.csv");
+    }
     std::ifstream file(path);
     if (!file) {
         throw std::runtime_error("Could not open data file: " + path.string());
@@ -586,6 +615,92 @@ std::vector<Bar> load_bars(const fs::path& data_root, const MarketSpec& spec) {
         throw std::runtime_error("No bars loaded for " + spec.ticker + " after session filtering.");
     }
     return bars;
+}
+
+int infer_bar_minutes(const std::vector<Bar>& bars) {
+    std::map<int, int> counts;
+    for (std::size_t i = 1; i < bars.size(); ++i) {
+        if (bars[i].date != bars[i - 1].date) {
+            continue;
+        }
+        const int prev = hhmm_to_minutes(bars[i - 1].time);
+        const int curr = hhmm_to_minutes(bars[i].time);
+        const int diff = curr - prev;
+        if (diff > 0 && diff <= 120) {
+            counts[diff] += 1;
+        }
+    }
+    if (counts.empty()) {
+        return 5;
+    }
+    int best_minutes = counts.begin()->first;
+    int best_count = counts.begin()->second;
+    for (const auto& [mins, count] : counts) {
+        if (count > best_count) {
+            best_minutes = mins;
+            best_count = count;
+        }
+    }
+    return best_minutes;
+}
+
+int infer_typical_bars_per_day(const std::vector<Bar>& bars) {
+    std::vector<int> counts;
+    counts.reserve(bars.size() / 100);
+    std::string current_date;
+    int current_count = 0;
+    for (const Bar& bar : bars) {
+        if (bar.date != current_date) {
+            if (!current_date.empty()) {
+                counts.push_back(current_count);
+            }
+            current_date = bar.date;
+            current_count = 0;
+        }
+        ++current_count;
+    }
+    if (current_count > 0) {
+        counts.push_back(current_count);
+    }
+    if (counts.empty()) {
+        return 0;
+    }
+    std::sort(counts.begin(), counts.end());
+    return counts[counts.size() / 2];
+}
+
+void finalize_market_spec_for_data(MarketSpec& spec, const std::vector<Bar>& bars) {
+    spec.active_bar_minutes = infer_bar_minutes(bars);
+    spec.professor_tau = scale_5m_bars(spec.professor_tau, spec.active_bar_minutes);
+    const int typical = infer_typical_bars_per_day(bars);
+    if (typical > 0) {
+        spec.bars_per_session = typical;
+    } else {
+        spec.bars_per_session = std::max(1, spec.session_minutes / std::max(1, spec.active_bar_minutes));
+    }
+}
+
+void validate_market_data(const std::vector<Bar>& bars, const MarketSpec& spec, const fs::path& path) {
+    if (bars.empty()) {
+        throw std::runtime_error("No bars loaded for " + spec.ticker + " from " + path.string());
+    }
+    const int first_key = date_key(bars.front().date);
+    double max_close = bars.front().close;
+    for (const Bar& bar : bars) {
+        max_close = std::max(max_close, bar.close);
+    }
+    if (spec.expected_start_key > 0 && first_key < spec.expected_start_key) {
+        throw std::runtime_error(
+            spec.ticker + " data file appears inconsistent with market inception: " + path.string() +
+            " starts at " + bars.front().date + "."
+        );
+    }
+    if (spec.min_plausible_price > 0.0 && max_close < spec.min_plausible_price) {
+        throw std::runtime_error(
+            spec.ticker + " data file appears inconsistent with expected price scale: " + path.string() +
+            " has max close " + std::to_string(max_close) + "."
+        );
+    }
 }
 
 double compute_max_drawdown(const std::vector<double>& equity) {
@@ -1934,12 +2049,16 @@ CliOptions parse_cli(int argc, char** argv) {
 
         if (arg == "--data-root") {
             options.data_root = require_value(arg);
+        } else if (arg == "--data-file") {
+            options.data_file = require_value(arg);
         } else if (arg == "--out-dir") {
             options.out_dir = require_value(arg);
         } else if (arg == "--mode") {
             options.mode = lower(require_value(arg));
         } else if (arg == "--grid-mode") {
             options.grid_mode = lower(require_value(arg));
+        } else if (arg == "--bar-minutes") {
+            options.bar_minutes = std::stoi(require_value(arg));
         } else if (arg == "--markets") {
             options.markets = split_list(require_value(arg));
         } else if (arg == "--is-years") {
@@ -1968,9 +2087,11 @@ CliOptions parse_cli(int argc, char** argv) {
             std::cout
                 << "Usage: tf_backtest_treasury_btc [options]\n"
                 << "  --data-root <path>       Input CSV directory\n"
+                << "  --data-file <path>       Explicit CSV file (single-market runs)\n"
                 << "  --out-dir <path>         Output directory for CSV files\n"
                 << "  --mode <both|walkforward|reference>\n"
                 << "  --grid-mode <quick|strict>\n"
+                << "  --bar-minutes <int>      Data interval in minutes (default: 5)\n"
                 << "  --markets <TY,BTC>       Markets to run, comma-separated\n"
                 << "  --is-years <int>         In-sample years per walk-forward period\n"
                 << "  --oos-quarters <int>     Out-of-sample quarters per period\n"
@@ -1994,6 +2115,12 @@ CliOptions parse_cli(int argc, char** argv) {
     if (options.grid_mode != "quick" && options.grid_mode != "strict") {
         throw std::runtime_error("grid-mode must be one of: quick, strict");
     }
+    if (options.bar_minutes <= 0) {
+        throw std::runtime_error("bar-minutes must be positive");
+    }
+    if (!options.data_file.empty() && options.markets.size() != 1) {
+        throw std::runtime_error("--data-file may only be used with a single market");
+    }
     if (!(options.reference_split_ratio > 0.0 && options.reference_split_ratio < 1.0)) {
         throw std::runtime_error("reference-split-ratio must be strictly between 0 and 1");
     }
@@ -2007,12 +2134,22 @@ int main(int argc, char** argv) {
         std::vector<SummaryRow> all_summaries;
 
         for (const std::string& requested_market : options.markets) {
-            const MarketSpec spec = get_market_spec(requested_market, options);
-            const std::vector<Bar> bars = load_bars(options.data_root, spec);
+            MarketSpec spec = get_market_spec(requested_market, options);
+            const fs::path source_path = !options.data_file.empty()
+                ? options.data_file
+                : (fs::is_regular_file(options.data_root)
+                    ? options.data_root
+                    : (options.data_root / (spec.ticker + "-" + std::to_string(options.bar_minutes) + "minHLV.csv")));
+            const std::vector<Bar> bars = load_bars(options.data_root, spec, options);
+            validate_market_data(bars, spec, source_path);
+            finalize_market_spec_for_data(spec, bars);
             if (options.verbose) {
                 std::cout << "\nRunning " << spec.ticker
                           << " (" << spec.name << ") on " << bars.size()
-                          << " filtered 5-minute bars\n";
+                          << " filtered " << spec.active_bar_minutes << "-minute bars\n";
+                std::cout << "Source file: " << source_path << "\n";
+                std::cout << "Typical bars/session: " << spec.bars_per_session
+                          << " | session minutes: " << spec.session_minutes << "\n";
                 std::cout << "Cost model: " << spec.cost_note << "\n";
             }
             const fs::path market_dir = options.out_dir / spec.ticker;

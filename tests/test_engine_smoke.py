@@ -121,7 +121,7 @@ class EngineSmokeTests(unittest.TestCase):
 
     def test_professor_reference_taus_match_requested_markets(self) -> None:
         self.assertEqual(professor_reference_tau("TY"), 1440)
-        self.assertEqual(professor_reference_tau("BTC"), 1152)
+        self.assertEqual(professor_reference_tau("BTC"), 1104)
 
     def test_tf_story_configuration_defaults_to_professor_horizon(self) -> None:
         cfg = choose_tf_story_configuration("TY", tf_grid=default_tf_grid("TY", quick=True), params_df=pd.DataFrame())
