@@ -421,8 +421,8 @@ def build_markdown(summary_df: pd.DataFrame, notes: list[str], comparison_df: pd
 def main() -> None:
     parser = argparse.ArgumentParser(description="Replay corrected C++ outputs through the fixed Python engine.")
     parser.add_argument("--job", action="append", default=[], help="Job like TICKER:MINUTES. Pass once per market/interval.")
-    parser.add_argument("--cpp-results-dir", default="results_cpp_fidelity_5m", help="Corrected C++ output directory relative to repo root.")
-    parser.add_argument("--out-dir", default="results_py_corrected", help="Output directory relative to repo root.")
+    parser.add_argument("--cpp-results-dir", default="results/cpp_parity", help="Corrected C++ output directory relative to repo root.")
+    parser.add_argument("--out-dir", default="results/walkforward", help="Output directory relative to repo root.")
     parser.add_argument("--no-execute-notebooks", action="store_true", help="Skip executing notebooks against the cached replay outputs.")
     parser.add_argument("--include-master-notebook", action="store_true", help="Also execute 00_Master_Pipeline.ipynb after replaying the cached results.")
     parser.add_argument("--timeout", type=int, default=0, help="Per-notebook timeout in seconds; 0 means no timeout.")

@@ -32,7 +32,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=PROJECT_ROOT / "results_diagnostics_story",
+        default=PROJECT_ROOT / "results" / "diagnostics",
         help="Directory for executed notebooks and exported figures.",
     )
     parser.add_argument(

@@ -1,7 +1,7 @@
 """
 Build Columbia-themed figures for the final report.
 
-Reads cached results from `results_py_corrected/` and `results_diagnostics_story/`
+Reads cached results from `results/walkforward/` and `results/diagnostics/`
 and writes PNGs into `report/figures/`. Designed to be re-runnable.
 
 Usage: python scripts/build_final_report_figures.py
@@ -73,8 +73,8 @@ def apply_theme() -> None:
 # Paths
 # ----------------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parents[1]
-RESULTS = ROOT / "results_py_corrected"
-DIAG = ROOT / "results_diagnostics_story"
+RESULTS = ROOT / "results" / "walkforward"
+DIAG = ROOT / "results" / "diagnostics"
 FIG = ROOT / "report" / "figures"
 FIG.mkdir(parents=True, exist_ok=True)
 

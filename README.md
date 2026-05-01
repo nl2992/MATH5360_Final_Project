@@ -39,12 +39,13 @@ Headline configuration: `T = 4 yr` in-sample, `τ = 1 quarter` OOS, full-grid se
 │   └── reference_backtest.py   # Matlab-parity reference split
 ├── cpp/                        # C++17 reference engine
 │   └── tf_backtest_treasury_btc.cpp
-├── notebooks/                  # narrative notebooks (00–06) + strategy_lib.py
+├── notebooks/                  # 00–03 narrative notebooks + strategy_lib.py
 ├── scripts/                    # report-builder & replay scripts
 ├── tests/                      # smoke tests
-├── results_py_corrected/       # canonical Python OOS / full-sample artifacts
-├── results_cpp_fidelity_5m/    # canonical C++ artifacts (cross-checked)
-├── results_diagnostics_story/  # cached VR & Push–Response tables
+├── results/
+│   ├── walkforward/            # canonical Python OOS / full-sample artifacts
+│   ├── cpp_parity/             # cross-checked C++ artifacts
+│   └── diagnostics/            # cached VR & Push–Response tables
 ├── report/
 │   ├── FINAL_REPORT.md         # the comprehensive write-up
 │   └── figures/                # Columbia-themed PNGs
@@ -66,7 +67,7 @@ python scripts/build_python_corrected_summary.py
 python scripts/build_final_report_figures.py
 ```
 
-The Python and C++ engines reproduce each other to float-64 precision on every metric (see `results_py_corrected/python_cpp_fidelity_comparison.csv`).
+The Python and C++ engines reproduce each other to float-64 precision on every metric (see `results/walkforward/python_cpp_fidelity_comparison.csv`).
 
 ## Statistical-test inferences
 

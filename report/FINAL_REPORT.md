@@ -266,9 +266,8 @@ Two-engine cross-validation is a hard requirement of the assignment ("preferably
 | TY 5m full sample         | 5.6e−15     | 3.4e−15   | 3.2e−08    | 0       |
 | BTC 5m walk-forward OOS   | 8.7e−16     | 0         | 5.1e−08    | 0       |
 | BTC 5m full sample        | 0           | 0         | 1.5e−08    | 0       |
-| TY 1m walk-forward OOS    | 2.0e−15     | 3.7e−15   | 4.5e−08    | 0       |
 
-(Source: `results_py_corrected/python_cpp_fidelity_comparison.csv`.)
+(Source: `results/walkforward/python_cpp_fidelity_comparison.csv`.)
 
 The only differences are float64 round-off in the cumulative MDD division — closed-trade counts and net profit match to the cent.
 
@@ -276,7 +275,7 @@ The only differences are float64 round-off in the cumulative MDD division — cl
 
 ## 10. T × τ sensitivity
 
-We also re-ran the experiment for additional `(T, τ)` combinations beyond the assignment baseline of `T = 4 yr`, `τ = 1 Q`, on the TY 5-minute series. Outputs live under `results_cpp_official_quick/` and `results_cpp_fidelity_5m/` (see CSV summaries).
+We also re-ran the experiment for additional `(T, τ)` combinations beyond the assignment baseline of `T = 4 yr`, `τ = 1 Q`, on the TY 5-minute series. Outputs live under `results/cpp_parity/` (see the `tf_backtest_summary.csv` and per-period CSVs).
 
 The qualitative findings:
 
@@ -316,12 +315,13 @@ The assignment-prescribed `(T, τ) = (4 yr, 1 Q)` is therefore retained as the h
 │   └── reference_backtest.py   # Matlab-parity reference split mode
 ├── cpp/                        # C++17 reference engine
 │   └── tf_backtest_treasury_btc.cpp
-├── notebooks/                  # narrative notebooks + strategy_lib.py
+├── notebooks/                  # 00–03 narrative notebooks + strategy_lib.py
 ├── scripts/                    # report builders + replay scripts
 │   └── build_final_report_figures.py   # this report's figure pipeline
-├── results_py_corrected/       # cached Python OOS / full-sample artifacts
-├── results_cpp_fidelity_5m/    # cached C++ artifacts cross-checked against Python
-├── results_diagnostics_story/  # VR & PR cached tables
+├── results/
+│   ├── walkforward/            # cached Python OOS / full-sample artifacts
+│   ├── cpp_parity/             # cached C++ artifacts cross-checked against Python
+│   └── diagnostics/            # VR & Push–Response cached tables
 ├── report/
 │   ├── FINAL_REPORT.md         # this document
 │   └── figures/                # Columbia-themed PNGs used by FINAL_REPORT.md
@@ -343,7 +343,7 @@ python scripts/build_python_corrected_summary.py
 python scripts/build_final_report_figures.py
 ```
 
-All figure PNGs in `report/figures/` are regenerated deterministically from the CSV artifacts in `results_py_corrected/` and `results_diagnostics_story/`.
+All figure PNGs in `report/figures/` are regenerated deterministically from the CSV artifacts in `results/walkforward/` and `results/diagnostics/`.
 
 ---
 

@@ -6,12 +6,11 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT_DIR = ROOT / "results_py_corrected"
+OUT_DIR = ROOT / "results" / "walkforward"
 
 CPP_DIR_MAP: dict[tuple[str, int], Path] = {
-    ("TY", 5): ROOT / "results_cpp_fidelity_5m",
-    ("BTC", 5): ROOT / "results_cpp_fidelity_5m",
-    ("TY", 1): ROOT / "results_cpp_fidelity_ty_1m",
+    ("TY", 5): ROOT / "results" / "cpp_parity",
+    ("BTC", 5): ROOT / "results" / "cpp_parity",
 }
 
 
@@ -154,9 +153,8 @@ def build_markdown(summary_df: pd.DataFrame, comparison_df: pd.DataFrame) -> str
         "This report uses the cached Python artifacts rebuilt from the corrected C++ runs.",
         "",
         "## Included runs",
-        "- TY 5-minute from `results_cpp_fidelity_5m`",
-        "- BTC 5-minute from `results_cpp_fidelity_5m`",
-        "- TY 1-minute from `results_cpp_fidelity_ty_1m`",
+        "- TY 5-minute from `results/cpp_parity/`",
+        "- BTC 5-minute from `results/cpp_parity/`",
         "",
         "## Summary table",
         summary_df.to_markdown(index=False),
@@ -167,8 +165,6 @@ def build_markdown(summary_df: pd.DataFrame, comparison_df: pd.DataFrame) -> str
         "## Source fidelity notes",
         "- TY uses TF Data point value = 1000, tick value = 15.625, slippage = 18.625, and the 07:20 to 14:00 session.",
         "- BTC uses TF Data point value = 5, slippage = 25, and the Bloomberg DES 17:00 to 16:00 trading session.",
-        "- TY 1-minute uses the same official TY market definition, scaled to 1-minute bars with 400 active bars per session.",
-        "- BTC 1-minute remains unavailable until a valid local futures CSV is provided.",
         "",
     ]
     return "\n".join(lines)
@@ -176,7 +172,7 @@ def build_markdown(summary_df: pd.DataFrame, comparison_df: pd.DataFrame) -> str
 
 def main() -> None:
     summary_rows: list[dict[str, object]] = []
-    for market, interval in [("TY", 5), ("BTC", 5), ("TY", 1)]:
+    for market, interval in [("TY", 5), ("BTC", 5)]:
         summary_rows.append(build_walkforward_row(market, interval))
         summary_rows.append(build_fullsample_row(market, interval))
         summary_rows.extend(build_reference_rows(market, interval))

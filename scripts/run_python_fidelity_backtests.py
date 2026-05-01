@@ -361,7 +361,7 @@ def main() -> None:
         default=["TY:5", "BTC:5", "BTC:1"],
         help="Market/interval job in the form TICKER:MINUTES. Defaults to TY:5, BTC:5, BTC:1.",
     )
-    parser.add_argument("--out-dir", default="results_py_corrected", help="Output directory relative to repo root.")
+    parser.add_argument("--out-dir", default="results/walkforward", help="Output directory relative to repo root.")
     parser.add_argument("--quick", action="store_true", default=True, help="Use the quick trend-following grid.")
     parser.add_argument("--no-execute-notebooks", action="store_true", help="Skip notebook execution.")
     parser.add_argument("--timeout", type=int, default=0, help="Per-notebook timeout in seconds; 0 means no timeout.")
@@ -387,7 +387,7 @@ def main() -> None:
         summary_df.to_csv(out_dir / "python_backtest_summary.csv", index=False)
         print(f"[summary] wrote {out_dir / 'python_backtest_summary.csv'}", flush=True)
 
-    comparison_df = compare_against_cpp(summary_df, ROOT / "results_cpp_fidelity_5m" / "tf_backtest_summary.csv")
+    comparison_df = compare_against_cpp(summary_df, ROOT / "results" / "cpp_parity" / "tf_backtest_summary.csv")
     if len(comparison_df):
         comparison_df.to_csv(out_dir / "python_cpp_fidelity_comparison.csv", index=False)
 
