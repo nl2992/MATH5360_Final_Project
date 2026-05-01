@@ -55,9 +55,10 @@ def performance_from_ledger(
     equity: np.ndarray,
     ticker: str,
     alpha: float = 0.05,
+    bar_minutes: int | None = None,
 ) -> dict[str, float]:
     spec = get_market(ticker)
-    bpy = bars_per_year(ticker)
+    bpy = bars_per_year(ticker, bar_minutes=bar_minutes)
     E0 = spec.E0
     E = np.asarray(equity, dtype=float)
     if len(E) == 0:

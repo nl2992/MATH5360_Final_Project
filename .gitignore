@@ -1,15 +1,41 @@
+# macOS
+.DS_Store
 
-# Generated result files
-results_cpp/**/*.csv
-results_cpp_official_quick/**/*.csv
-
-results_cpp/**/*.csv
-results_cpp_official_quick/**/*.csv
-results_cpp_smoke/**/*.csv
-results_cost_sensitivity_fixed/**/*.csv
-results_diagnostics_story/**/*.csv
-
-.vendor/
+# Python
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.pytest_cache/
+.vendor/
+
+# Claude Code workspaces
+.claude/
+
+# IDE
+.vscode/
+
+# Compiled C++ binaries / artifacts
+cpp/build/
+*.dSYM/
+
+# Large per-bar series files (regenerated deterministically by scripts).
+# We keep the small summary/ledger/params CSVs in results_*/ tracked
+# so the report figures and tables can be regenerated, but the
+# per-bar equity & returns series are too big for git.
+**/*equity.csv
+**/*reference_series.csv
+**/*returns.csv
+
+# Large 1-minute data files (regeneratable from upstream provider)
+data/*-1minHLV.csv
+
+# Stale exploratory result trees (kept locally but excluded from git)
+results_cpp/
+results_cpp_official_quick/**/*.csv
+results_cpp_smoke/
+results_cost_sensitivity_fixed/**/*.csv
+results_cpp_fidelity_ty_1m/
+
+# Per-run temp artifacts
+*.log
+*.tmp

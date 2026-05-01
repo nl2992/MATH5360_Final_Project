@@ -8,34 +8,54 @@ from scipy import stats
 from scipy.stats import spearmanr
 
 from .config import (
+    DEFAULT_BAR_MINUTES,
+    active_bars_per_session,
     bars_to_time,
     get_market,
+    infer_bar_minutes_from_index,
     professor_dense_q_grid,
     professor_reference_tau,
     professor_showcase_tau,
 )
 
 
-def load_ohlc(data_dir: str, ticker: str, fallback_synthetic: bool = True) -> pd.DataFrame:
+def load_ohlc(
+    data_dir: str,
+    ticker: str,
+    fallback_synthetic: bool = True,
+    bar_minutes: int | None = DEFAULT_BAR_MINUTES,
+) -> pd.DataFrame:
     spec = get_market(ticker)
     if os.path.isfile(data_dir):
         print(f"✓ Loaded {spec.ticker} from {data_dir}")
-        return _read_ohlc_csv(data_dir)
-    candidates = [
-        os.path.join(data_dir, f"{ticker.upper()}-5minHLV.csv"),
-        os.path.join(data_dir, f"{spec.ticker.upper()}-5minHLV.csv"),
-    ]
+        df = _read_ohlc_csv(data_dir)
+        _validate_loaded_market(df, ticker, source_path=data_dir)
+        return df
+    if bar_minutes is not None:
+        candidates = [
+            os.path.join(data_dir, f"{ticker.upper()}-{int(bar_minutes)}minHLV.csv"),
+            os.path.join(data_dir, f"{spec.ticker.upper()}-{int(bar_minutes)}minHLV.csv"),
+        ]
+    else:
+        candidates = [
+            os.path.join(data_dir, f"{ticker.upper()}-5minHLV.csv"),
+            os.path.join(data_dir, f"{spec.ticker.upper()}-5minHLV.csv"),
+            os.path.join(data_dir, f"{ticker.upper()}-1minHLV.csv"),
+            os.path.join(data_dir, f"{spec.ticker.upper()}-1minHLV.csv"),
+        ]
     for path in candidates:
         if os.path.exists(path):
             print(f"✓ Loaded {spec.ticker} from {path}")
-            return _read_ohlc_csv(path)
+            df = _read_ohlc_csv(path)
+            _validate_loaded_market(df, ticker, source_path=path)
+            return df
 
     if fallback_synthetic:
         print(
             f"⚠ No data file found for {spec.ticker} "
             f"(tried {candidates}) — using synthetic series."
         )
-        return _synthetic_series(ticker)
+        return _synthetic_series(ticker, bar_minutes=int(bar_minutes or DEFAULT_BAR_MINUTES))
 
     raise FileNotFoundError(f"No data file found for {spec.ticker}: {candidates}")
 
@@ -69,14 +89,35 @@ def _read_ohlc_csv(path: str) -> pd.DataFrame:
             rename_map[col] = "Volume"
     df = df.rename(columns=rename_map)
     keep = [col for col in ["Open", "High", "Low", "Close", "Volume"] if col in df.columns]
-    return df[keep].astype(float)
+    out = df[keep].astype(float)
+    out.attrs["source_path"] = path
+    return out
 
 
-def _synthetic_series(ticker: str, n: int = 250_000) -> pd.DataFrame:
+def _validate_loaded_market(df: pd.DataFrame, ticker: str, source_path: str = "") -> None:
+    spec = get_market(ticker)
+    first = pd.Timestamp(df.index.min())
+    max_close = float(df["Close"].max())
+    if spec.ticker == "BTC":
+        if first < pd.Timestamp("2017-12-18"):
+            raise ValueError(
+                f"{ticker.upper()} data appears mislabeled: {source_path} starts at {first:%Y-%m-%d}, before CME BTC futures inception."
+            )
+        if max_close < 1000:
+            raise ValueError(
+                f"{ticker.upper()} data appears mislabeled: {source_path} never trades above 1000, which is inconsistent with CME BTC futures."
+            )
+
+
+def _synthetic_series(
+    ticker: str,
+    n: int = 250_000,
+    bar_minutes: int = DEFAULT_BAR_MINUTES,
+) -> pd.DataFrame:
     spec = get_market(ticker)
     seed = 42 + sum(ord(ch) for ch in spec.ticker)
     np.random.seed(seed)
-    dates = pd.date_range("2010-01-01", periods=n, freq="5min")
+    dates = pd.date_range("2010-01-01", periods=n, freq=f"{int(bar_minutes)}min")
     ret = np.random.randn(n) * spec.synthetic_sigma
     ret += np.sin(np.linspace(0, 8 * np.pi, n)) * (spec.synthetic_sigma / 3)
     close = spec.start_price * np.exp(np.cumsum(ret))
@@ -126,8 +167,13 @@ def filter_session(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
     spec = get_market(ticker)
     if not spec.use_session_filter or spec.session_start is None or spec.session_end is None:
         return df.copy()
-    t = df.index.strftime("%H:%M")
-    mask = (t >= spec.session_start) & (t < spec.session_end)
+    mins = df.index.hour * 60 + df.index.minute
+    start = int(spec.session_start[:2]) * 60 + int(spec.session_start[3:5])
+    end = int(spec.session_end[:2]) * 60 + int(spec.session_end[3:5])
+    if start <= end:
+        mask = (mins > start) & (mins <= end)
+    else:
+        mask = (mins > start) | (mins <= end)
     return df.loc[mask].copy()
 
 
@@ -178,7 +224,7 @@ def vr_price_differences(df: pd.DataFrame, k: int, ticker: str) -> dict[str, obj
     sess = filter_session(df, ticker)
     dp = sess["Close"].diff().dropna().values
     out = _lo_mackinlay_vr_core(dp, k)
-    out.update({"k": k, "kind": "dp", "ticker": ticker.upper(), "time_scale": bars_to_time(k, ticker)})
+    out.update({"k": k, "kind": "dp", "ticker": ticker.upper(), "time_scale": bars_to_time(k, ticker, df=sess)})
     return out
 
 
@@ -186,7 +232,7 @@ def vr_log_returns(df: pd.DataFrame, k: int, ticker: str) -> dict[str, object]:
     lr = np.log(df["Close"] / df["Close"].shift(1)).dropna().values
     out = _lo_mackinlay_vr_core(lr, k)
     out.update(
-        {"k": k, "kind": "logret", "ticker": ticker.upper(), "time_scale": bars_to_time(k, ticker)}
+        {"k": k, "kind": "logret", "ticker": ticker.upper(), "time_scale": bars_to_time(k, ticker, df=df)}
     )
     return out
 
@@ -196,9 +242,8 @@ def run_vr_suite(
     ticker: str,
     k_values: list[int] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    spec = get_market(ticker)
     if k_values is None:
-        bps = spec.bars_per_session
+        bps = max(1, int(round(get_market(ticker).session_minutes / infer_bar_minutes_from_index(df.index))))
         k_values = [2, 4, 8, 12, 24, 48, bps, bps * 2, bps * 5, bps * 10, bps * 20, bps * 40]
 
     rows_dp = [vr_price_differences(df, k, ticker) for k in k_values]
@@ -221,14 +266,14 @@ def variance_ratio_curve(
 ) -> pd.DataFrame:
     spec = get_market(ticker)
     if q_values is None:
-        q_values = professor_dense_q_grid(ticker)
+        q_values = professor_dense_q_grid(ticker, bar_minutes=infer_bar_minutes_from_index(df.index))
 
     q_values = np.unique(np.asarray(q_values, dtype=int))
     rows: list[dict[str, object]] = [
         {
             "ticker": spec.ticker,
             "q": 1,
-            "time_scale": bars_to_time(1, ticker),
+            "time_scale": bars_to_time(1, ticker, df=df),
             "VR": 1.0,
             "Z2": 0.0,
             "p2": np.nan,
@@ -295,8 +340,8 @@ def push_response_diagram(
         "ticker": ticker.upper(),
         "push_bars": push_bars,
         "response_bars": response_bars,
-        "push_scale": bars_to_time(push_bars, ticker),
-        "resp_scale": bars_to_time(response_bars, ticker),
+        "push_scale": bars_to_time(push_bars, ticker, df=sess),
+        "resp_scale": bars_to_time(response_bars, ticker, df=sess),
         "n_obs": int(L),
         "n_bins": n_bins,
         "bin_centre": bin_centre,
@@ -318,8 +363,7 @@ def run_pr_suite(
     response_grid: list[int] | None = None,
     n_bins: int = 11,
 ) -> tuple[pd.DataFrame, list[dict[str, object]]]:
-    spec = get_market(ticker)
-    bps = spec.bars_per_session
+    bps = active_bars_per_session(ticker, df=df)
     if push_grid is None:
         push_grid = [6, 12, 24, max(1, bps // 2), bps, bps * 2, bps * 5]
     if response_grid is None:
@@ -355,20 +399,22 @@ def professor_horizon_bundle(
     ticker: str,
 ) -> dict[str, object]:
     spec = get_market(ticker)
-    reference_tau = int(professor_reference_tau(ticker))
-    showcase_tau = int(professor_showcase_tau(ticker))
-    short_tau = spec.bars_per_session if spec.ticker == "TY" else max(spec.bars_per_session, reference_tau // 4)
-    vr_curve_df = variance_ratio_curve(df, ticker, q_values=professor_dense_q_grid(ticker))
+    bar_minutes = infer_bar_minutes_from_index(df.index)
+    bps = max(1, int(round(spec.session_minutes / bar_minutes)))
+    reference_tau = int(professor_reference_tau(ticker, bar_minutes=bar_minutes))
+    showcase_tau = int(professor_showcase_tau(ticker, bar_minutes=bar_minutes))
+    short_tau = bps if spec.ticker == "TY" else max(bps, reference_tau // 4)
+    vr_curve_df = variance_ratio_curve(df, ticker, q_values=professor_dense_q_grid(ticker, bar_minutes=bar_minutes))
     short_pr = push_response_diagram(df, short_tau, short_tau, ticker)
     reference_pr = push_response_diagram(df, reference_tau, reference_tau, ticker)
     showcase_pr = push_response_diagram(df, showcase_tau, showcase_tau, ticker)
     return {
         "reference_tau": reference_tau,
-        "reference_scale": bars_to_time(reference_tau, ticker),
+        "reference_scale": bars_to_time(reference_tau, ticker, df=df),
         "showcase_tau": showcase_tau,
-        "showcase_scale": bars_to_time(showcase_tau, ticker),
+        "showcase_scale": bars_to_time(showcase_tau, ticker, df=df),
         "short_tau": int(short_tau),
-        "short_scale": bars_to_time(int(short_tau), ticker),
+        "short_scale": bars_to_time(int(short_tau), ticker, df=df),
         "vr_curve_df": vr_curve_df,
         "short_pr": short_pr,
         "reference_pr": reference_pr,
@@ -454,6 +500,7 @@ def summarise_trend_profile(
     vr_dp_df: pd.DataFrame,
     pr_df: pd.DataFrame | None = None,
     ticker: str | None = None,
+    bar_minutes: int = DEFAULT_BAR_MINUTES,
 ) -> dict[str, object]:
     if vr_dp_df is None or len(vr_dp_df) == 0:
         return {
@@ -479,6 +526,7 @@ def summarise_trend_profile(
 
     inferred_ticker = ticker or str(vr_dp_df.iloc[0]["ticker"])
     spec = get_market(inferred_ticker)
+    bps = active_bars_per_session(inferred_ticker, bar_minutes=bar_minutes)
     vr = vr_dp_df.sort_values("k").reset_index(drop=True).copy()
     split = max(1, len(vr) // 3)
     vr_short = vr.iloc[:split]
@@ -530,9 +578,9 @@ def summarise_trend_profile(
         peak_scale_bars = max(peak_scale_bars, int(float(pr_peak_row["push_bars"])))
 
     if spec.ticker == "BTC":
-        tf_speed_bias = "fast" if peak_scale_bars <= 8 * spec.bars_per_session else "medium"
+        tf_speed_bias = "fast" if peak_scale_bars <= 8 * bps else "medium"
     else:
-        tf_speed_bias = "slow" if peak_scale_bars >= 10 * spec.bars_per_session or trend_strengthens else "medium"
+        tf_speed_bias = "slow" if peak_scale_bars >= 10 * bps or trend_strengthens else "medium"
 
     short_window = f"{vr_short.iloc[0]['time_scale']} to {vr_short.iloc[-1]['time_scale']}"
     long_window = f"{vr_long.iloc[0]['time_scale']} to {vr_long.iloc[-1]['time_scale']}"
@@ -605,6 +653,7 @@ def run_diagnostics(
     response_grid: list[int] | None = None,
     n_bins: int = 11,
 ) -> dict[str, object]:
+    bar_minutes = infer_bar_minutes_from_index(df.index)
     vr_dp_df, vr_lr_df = run_vr_suite(df, ticker, k_values=k_values)
     pr_summary_df, pr_diagrams = run_pr_suite(
         df,
@@ -615,7 +664,12 @@ def run_diagnostics(
     )
     regime_table = interpret_regimes(vr_dp_df, pr_summary_df)
     regime_choice = choose_regime_family(vr_dp_df, pr_summary_df)
-    trend_profile = summarise_trend_profile(vr_dp_df, pr_summary_df, ticker=ticker)
+    trend_profile = summarise_trend_profile(
+        vr_dp_df,
+        pr_summary_df,
+        ticker=ticker,
+        bar_minutes=bar_minutes,
+    )
     professor_bundle = professor_horizon_bundle(df, ticker)
     return {
         "vr_price_df": vr_dp_df,

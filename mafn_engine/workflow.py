@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from .config import default_tf_grid, get_market, professor_reference_tau
+from .config import default_tf_grid, get_market, infer_bar_minutes_from_index, professor_reference_tau
 from .diagnostics import load_ohlc, prepare_analysis_frame, run_diagnostics, validate_ohlc
 from .metrics import performance_from_ledger, split_metric_sections
 from .strategies import run_backtest
@@ -105,15 +105,16 @@ def choose_tf_story_configuration(
     ticker: str,
     tf_grid: dict[str, np.ndarray] | None = None,
     params_df: pd.DataFrame | None = None,
+    bar_minutes: int = 5,
 ) -> dict[str, object]:
-    tf_grid = default_tf_grid(ticker, quick=True) if tf_grid is None else tf_grid
+    tf_grid = default_tf_grid(ticker, quick=True, bar_minutes=bar_minutes) if tf_grid is None else tf_grid
     modal = select_modal_configuration(params_df if params_df is not None else pd.DataFrame())
     if modal and str(modal.get("family", "")).lower() == "tf":
         return {"family": "tf", "L": int(modal["L"]), "S": float(modal["S"])}
 
     l_values = np.asarray(tf_grid.get("L", []), dtype=int)
     s_values = np.asarray(tf_grid.get("S", []), dtype=float)
-    target_l = professor_reference_tau(ticker)
+    target_l = professor_reference_tau(ticker, bar_minutes=bar_minutes)
     target_s = 0.02 if ticker.upper() == "TY" else 0.03
     return {
         "family": "tf",
@@ -231,6 +232,9 @@ def build_market_narrative(
                 "on the full sample we care about whether the long-horizon segment bends upward or flattens relative to that earlier decline."
             )
         lines.append(
+            "On the full sample, we still care about the late-horizon recovery shape rather than demanding that variance ratio exceed 1 at the first few horizons."
+        )
+        lines.append(
             f"The professor reference horizon is about one month at {int(professor_bundle['reference_tau'])} bars "
             f"({professor_bundle['reference_scale']}), where the push-response shape should look more trend-consistent "
             f"(rho={reference_pr['rho']:+.3f}) than it does at the short horizon (rho={short_pr['rho']:+.3f})."
@@ -266,6 +270,7 @@ def build_market_story(
     *,
     data_dir: str | None = None,
     data: pd.DataFrame | None = None,
+    bar_minutes: int | None = None,
     quick: bool = True,
     walkforward_mode: str = "tf",
     include_walkforward: bool = True,
@@ -284,13 +289,23 @@ def build_market_story(
     if data is None and data_dir is None:
         raise ValueError("Either data or data_dir must be supplied to build_market_story.")
 
-    full_df = data.copy() if data is not None else load_ohlc(str(data_dir), spec.ticker, fallback_synthetic=False)
+    full_df = (
+        data.copy()
+        if data is not None
+        else load_ohlc(
+            str(data_dir),
+            spec.ticker,
+            fallback_synthetic=False,
+            bar_minutes=bar_minutes,
+        )
+    )
+    bar_minutes = infer_bar_minutes_from_index(full_df.index)
     validation = validate_ohlc(full_df)
     analysis_df = prepare_analysis_frame(full_df, spec.ticker)
     diagnostics_bundle = run_diagnostics(analysis_df, spec.ticker)
 
     if tf_grid is None:
-        tf_grid = default_tf_grid(spec.ticker, quick=quick)
+        tf_grid = default_tf_grid(spec.ticker, quick=quick, bar_minutes=bar_minutes)
 
     wf_bundle: dict[str, object] | None = None
     surface_df: pd.DataFrame | None = None
@@ -316,6 +331,7 @@ def build_market_story(
                 wf_bundle["ledger"],
                 wf_bundle["equity"]["OOS_Equity"].to_numpy(dtype=float),
                 spec.ticker,
+                bar_minutes=bar_minutes,
             )
 
         if include_surface:
@@ -337,6 +353,7 @@ def build_market_story(
         spec.ticker,
         tf_grid=tf_grid,
         params_df=wf_bundle["params"] if wf_bundle is not None else None,
+        bar_minutes=bar_minutes,
     )
     full_sample_result = run_backtest(
         analysis_df,
@@ -350,6 +367,7 @@ def build_market_story(
         full_sample_result["Ledger"],
         np.asarray(full_sample_result["Equity"], dtype=float),
         spec.ticker,
+        bar_minutes=bar_minutes,
     )
 
     story_rows = build_market_story_rows(

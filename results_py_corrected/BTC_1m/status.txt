@@ -1,0 +1,1 @@
+BTC 1m: skipped because the requested source file is missing (No data file found for BTC: ['/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project/data/BTC-1minHLV.csv', '/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project/data/BTC-1minHLV.csv']).
