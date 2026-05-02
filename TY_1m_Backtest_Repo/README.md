@@ -7,22 +7,22 @@ It was carved out from the broader course project so the `TY` 1-minute experimen
 ## What is included
 
 - Corrected C++ backtest source:
-  - [cpp/tf_backtest_treasury_btc.cpp](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/cpp/tf_backtest_treasury_btc.cpp)
+  - [cpp/tf_backtest_treasury_btc.cpp](cpp/tf_backtest_treasury_btc.cpp)
 - Corrected Python engine:
-  - [mafn_engine](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/mafn_engine)
+  - [mafn_engine](mafn_engine)
 - Helper scripts:
-  - [scripts/replay_cpp_fidelity_in_python.py](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/scripts/replay_cpp_fidelity_in_python.py)
-  - [scripts/build_python_corrected_summary.py](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/scripts/build_python_corrected_summary.py)
+  - [scripts/replay_cpp_fidelity_in_python.py](scripts/replay_cpp_fidelity_in_python.py)
+  - [scripts/build_python_corrected_summary.py](scripts/build_python_corrected_summary.py)
 - Notebook templates:
-  - [notebooks/02_Strategy_and_WalkForward.ipynb](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/notebooks/02_Strategy_and_WalkForward.ipynb)
-  - [notebooks/03_Performance_Metrics_Extended.ipynb](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/notebooks/03_Performance_Metrics_Extended.ipynb)
+  - [notebooks/02_Strategy_and_WalkForward.ipynb](notebooks/02_Strategy_and_WalkForward.ipynb)
+  - [notebooks/03_Performance_Metrics_Extended.ipynb](notebooks/03_Performance_Metrics_Extended.ipynb)
 - Executed TY 1-minute notebooks:
-  - [notebooks_executed/02_Strategy_and_WalkForward_TY_1m_executed.ipynb](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/notebooks_executed/02_Strategy_and_WalkForward_TY_1m_executed.ipynb)
-  - [notebooks_executed/03_Performance_Metrics_Extended_TY_1m_executed.ipynb](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/notebooks_executed/03_Performance_Metrics_Extended_TY_1m_executed.ipynb)
+  - [notebooks_executed/02_Strategy_and_WalkForward_TY_1m_executed.ipynb](notebooks_executed/02_Strategy_and_WalkForward_TY_1m_executed.ipynb)
+  - [notebooks_executed/03_Performance_Metrics_Extended_TY_1m_executed.ipynb](notebooks_executed/03_Performance_Metrics_Extended_TY_1m_executed.ipynb)
 - Corrected C++ TY 1-minute outputs:
-  - [results_cpp_ty_1m](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/results_cpp_ty_1m)
+  - [results_cpp_ty_1m](results_cpp_ty_1m)
 - Corrected Python TY 1-minute outputs:
-  - [results_py_ty_1m](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/results_py_ty_1m)
+  - [results_py_ty_1m](results_py_ty_1m)
 
 ## Market-definition fidelity used here
 
@@ -39,7 +39,7 @@ Those settings reflect the corrected fidelity pass against the `TF Data` workboo
 
 ## Headline results
 
-From [results_cpp_ty_1m/tf_backtest_summary.csv](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/results_cpp_ty_1m/tf_backtest_summary.csv):
+From [results_cpp_ty_1m/tf_backtest_summary.csv](results_cpp_ty_1m/tf_backtest_summary.csv):
 
 - Walk-forward OOS:
   - `L = 6400`
@@ -69,8 +69,8 @@ The corrected Python replay matches the corrected C++ outputs within tolerance o
 
 See:
 
-- [results_py_ty_1m/python_cpp_fidelity_comparison_ty_1m.csv](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/results_py_ty_1m/python_cpp_fidelity_comparison_ty_1m.csv)
-- [results_py_ty_1m/python_fidelity_summary_ty_1m.md](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_TY_1m_Backtest_Repo/results_py_ty_1m/python_fidelity_summary_ty_1m.md)
+- [results_py_ty_1m/python_cpp_fidelity_comparison_ty_1m.csv](results_py_ty_1m/python_cpp_fidelity_comparison_ty_1m.csv)
+- [results_py_ty_1m/python_fidelity_summary_ty_1m.md](results_py_ty_1m/python_fidelity_summary_ty_1m.md)
 
 ## What was intentionally omitted
 
@@ -89,11 +89,11 @@ Those files can still exist locally after generation, but they are intentionally
 
 They still exist in the parent project here:
 
-- [/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project/results_cpp_fidelity_ty_1m](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/results_cpp_fidelity_ty_1m)
+- [../results_cpp_fidelity_ty_1m](../results_cpp_fidelity_ty_1m)
 
 The source `TY` 1-minute input CSV was also not duplicated here due size:
 
-- [/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_Final_Project/data/TY-1minHLV.csv](/Users/nigelli/Desktop/Columbia%20MAFN/26Spring/MATH5360/Final%20Project/MATH5360_Final_Project/data/TY-1minHLV.csv)
+- [../data/TY-1minHLV.csv](../data/TY-1minHLV.csv)
 
 ## Quick run commands
 

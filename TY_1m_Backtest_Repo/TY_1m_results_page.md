@@ -28,7 +28,7 @@ This page coalesces the corrected `TY` 1-minute results from the standalone repo
 - Full-sample net profit: `$97,670.56`
 - Full-sample max drawdown: `$13,827.50`
 
-![Headline Results](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/00_headline_results_table.png)
+![Headline Results](results_report/figures/00_headline_results_table.png)
 
 ## 1-minute versus 5-minute comparison
 | Run              | 1m Profit   | 5m Profit   | 1m MaxDD   | 5m MaxDD   |   1m RoA |   5m RoA |
@@ -42,39 +42,39 @@ This page coalesces the corrected `TY` 1-minute results from the standalone repo
 - 1m OOS max drawdown minus 5m OOS max drawdown: `$-261.61`
 - 1m OOS RoA minus 5m OOS RoA: `0.304`
 
-![1m vs 5m Interval Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/10_interval_comparison_table.png)
+![1m vs 5m Interval Comparison](results_report/figures/10_interval_comparison_table.png)
 
-![1m vs 5m Growth Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/11_growth_compare_1m_vs_5m.png)
+![1m vs 5m Growth Comparison](results_report/figures/11_growth_compare_1m_vs_5m.png)
 
-![1m vs 5m Underwater Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/12_underwater_compare_1m_vs_5m.png)
+![1m vs 5m Underwater Comparison](results_report/figures/12_underwater_compare_1m_vs_5m.png)
 
-![1m vs 5m OOS Metric Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/13_oos_metric_compare_1m_vs_5m.png)
+![1m vs 5m OOS Metric Comparison](results_report/figures/13_oos_metric_compare_1m_vs_5m.png)
 
-![1m vs 5m Quarterly Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/14_quarterly_compare_1m_vs_5m.png)
+![1m vs 5m Quarterly Comparison](results_report/figures/14_quarterly_compare_1m_vs_5m.png)
 
-![1m vs 5m Parameter Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/15_parameter_compare_1m_vs_5m.png)
+![1m vs 5m Parameter Comparison](results_report/figures/15_parameter_compare_1m_vs_5m.png)
 
-![1m vs 5m Distribution Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/16_distribution_compare_1m_vs_5m.png)
+![1m vs 5m Distribution Comparison](results_report/figures/16_distribution_compare_1m_vs_5m.png)
 
-![1m vs 5m Parity Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/17_parity_compare_1m_vs_5m.png)
+![1m vs 5m Parity Comparison](results_report/figures/17_parity_compare_1m_vs_5m.png)
 
 ## Equity curves
-![Growth of $1](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/01_growth_of_1.png)
+![Growth of $1](results_report/figures/01_growth_of_1.png)
 
 ## Underwater curves
-![Underwater Curves](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/02_underwater_curves.png)
+![Underwater Curves](results_report/figures/02_underwater_curves.png)
 
 ## Quarterly walk-forward outcomes
-![Quarterly Performance](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/03_quarterly_performance.png)
+![Quarterly Performance](results_report/figures/03_quarterly_performance.png)
 
 ## Parameter path
-![Parameter Path](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/04_parameter_path.png)
+![Parameter Path](results_report/figures/04_parameter_path.png)
 
 ## Parameter frequency
-![Parameter Frequency](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/05_parameter_frequency.png)
+![Parameter Frequency](results_report/figures/05_parameter_frequency.png)
 
 ## Trade distributions
-![Trade Distributions](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/06_trade_distributions.png)
+![Trade Distributions](results_report/figures/06_trade_distributions.png)
 
 ## Matlab-style reference split
 | Segment       |   start_idx |   end_exclusive |   Profit |   WorstDrawDown |   StDev |   TradeUnits |   Objective |
@@ -82,10 +82,10 @@ This page coalesces the corrected `TY` 1-minute results from the standalone repo
 | in_sample     |       17000 |         3011565 | 91467.8  |         18981.4 | 25.4574 |        157.5 |    4.81882  |
 | out_of_sample |     3011565 |         4319435 |  4408.25 |         33191   | 22.2266 |         71   |    0.132815 |
 
-![Reference Split Comparison](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/07_reference_split_comparison.png)
+![Reference Split Comparison](results_report/figures/07_reference_split_comparison.png)
 
 ## Quarterly extremes
-![Quarter Extremes](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/08_quarter_extremes.png)
+![Quarter Extremes](results_report/figures/08_quarter_extremes.png)
 
 ### Top 10 OOS quarters by profit
 |   Period | OOS_start           | OOS_end             |     L |     S |   OOS_Profit |   OOS_MaxDD |   OOS_Objective |   OOS_Trades |
@@ -124,7 +124,7 @@ This page coalesces the corrected `TY` 1-minute results from the standalone repo
 | TY       |            1 | reference_out_of_sample |        4408.25 |     4408.25 |       33191   |    33191   |    0.132815 | 0.132815 |                   71 |                71 |      0           |     0           |   0           |                0 | True          |
 | TY       |            1 | reference_full          |       95516.7  |    95516.7  |       33191   |    33191   |    2.87779  | 2.87779  |                  228 |               228 |      0           |     0           |   0           |                0 | True          |
 
-![Parity Table](/Users/nigelli/Desktop/Columbia MAFN/26Spring/MATH5360/Final Project/MATH5360_TY_1m_Backtest_Repo/results_report/figures/09_parity_table.png)
+![Parity Table](results_report/figures/09_parity_table.png)
 
 ## Figure inventory
 - `00_headline_results_table.png`: slide-style KPI table.
