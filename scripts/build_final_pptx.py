@@ -821,7 +821,7 @@ def main() -> None:
     remove_all_slides(prs)
     print(f"after wipe: {len(prs.slides)} slides")
 
-    TOTAL = 35
+    TOTAL = 41
 
     # ----- Front matter (1-13) -----
     slide_title(prs, 1, TOTAL)
@@ -836,46 +836,102 @@ def main() -> None:
     slide_pr_definition(prs, 10, TOTAL)
     slide_central_thesis(prs, 11, TOTAL)
     slide_horizon_spectrum(prs, 12, TOTAL)
-    slide_section_divider(prs, label="Diagnostics", big="Random walk tests on TY and BTC",
+    slide_section_divider(prs, label="Diagnostics",
+                          big="Random walk tests on TY and BTC — VR + Push-Response across horizons and decades",
                           slide_no=13, total=TOTAL)
 
-    # ----- Diagnostic figures (14-15) -----
+    # ----- Diagnostic figures (14-19) -----
+    # 14 — TY price + implied yield (replicates the reference)
     slide_image_full(
         prs,
-        title="Evidence — Variance Ratio Profile (TY vs BTC)",
+        title="TY price and implied 10-yr yield, 1983–2026",
         section="Diagnostics",
-        image=FIG_REPORT / "fig_vr_curves.png",
+        image=FIG_PRES / "repl_ty_price_yield.png",
         caption=(
-            "Lo–MacKinlay VR(q) on price differences, log-spaced horizons. TY hovers just below 1 "
-            "across all q (random-walk-like, dipping ~0.89 at 10 sessions). BTC reaches a deeper 0.82 "
-            "at ~8.6 days. Neither rejects the null at 5%; the push-response test below tells the "
-            "actually informative story for the strategy."
+            "Top: TY 10-yr Treasury futures daily close. Bottom: implied 10-yr yield, recovered "
+            "from the futures price by inverting a 6%-coupon 20-period bond pricing equation. "
+            "Reproduces the structural decline in yields from ~14% (1984) to ~0.5% (2020) before "
+            "the 2022–24 hiking cycle returned yields to ~4–5%."
         ),
         slide_no=14, total=TOTAL,
     )
+    # 15 — VR vs q (single-curve, q to 5000 — replicates the reference)
     slide_image_full(
         prs,
-        title="Evidence — Push-Response Diagrams",
+        title="Variance Ratio vs q — TY 5-min price differences",
         section="Diagnostics",
-        image=FIG_REPORT / "fig_push_response.png",
+        image=FIG_PRES / "repl_ty_vr_curve.png",
         caption=(
-            "Conditional mean of the forward response per push-decile, with bin-level standard errors. "
-            "TY shows positive Spearman ρ ≈ 0.59 (p ≈ 0.06) at q = 1 440 bars (~18 sessions). "
-            "BTC shows ρ ≈ +0.67 (p ≈ 0.02) at q = 3 456 bars (~12 days). These horizons drive the "
-            "walk-forward picks of L*."
+            "Single-window VR(q) on TY 5-min price differences out to q = 5 000 bars (~62.5 trading days). "
+            "VR dips to ≈ 0.89 around q = 800 (~10 sessions) and recovers toward 0.96 around q = 3 500 (~44 sessions). "
+            "Across the entire profile VR < 1, but the gap closes at multi-week horizons — exactly where the "
+            "push-response test will show positive ρ."
         ),
         slide_no=15, total=TOTAL,
     )
+    # 16 — VR by past 10/20/30/40 year lookbacks (replicates the reference)
+    slide_image_full(
+        prs,
+        title="Variance Ratio Test for TY: past 10/20/30/40 years",
+        section="Diagnostics",
+        image=FIG_PRES / "repl_ty_vr_lookback.png",
+        caption=(
+            "How the VR profile depends on the lookback window. The Past-10-year curve crosses above 1 "
+            "around q ≈ 4 000 — Treasuries have been *trending* in the 2016–2026 sample. Longer lookbacks "
+            "smooth this into the long-run profile, but the trend signal at multi-week horizons is preserved."
+        ),
+        slide_no=16, total=TOTAL,
+    )
+    # 17 — VR by backward 10-year windows (replicates the reference)
+    slide_image_full(
+        prs,
+        title="Variance Ratio Test by backward 10-year windows — TY",
+        section="Diagnostics",
+        image=FIG_PRES / "repl_ty_vr_decade_windows.png",
+        caption=(
+            "Decade-by-decade decomposition. The 2016–2026 decade clearly trends at long q (VR > 1 above "
+            "q ≈ 3 000). The 2006–2016 decade is the most mean-reverting (the QE/ZIRP era). The earlier "
+            "windows sit closer to the random-walk null — regime change is real and visible in the data."
+        ),
+        slide_no=17, total=TOTAL,
+    )
+    # 18 — Push-response grid TY (replicates the reference)
+    slide_image_full(
+        prs,
+        title="Push-Response Test for TY: short → medium horizons",
+        section="Diagnostics",
+        image=FIG_PRES / "repl_ty_pr_grid.png",
+        caption=(
+            "Conditional mean of the forward response, per push-bin, at twelve τ values from 1 to 350 bars. "
+            "At τ = 1 the response is mean-reverting (negative slope). Around τ = 32–96 the slope flattens, "
+            "and from τ = 144 onwards the response acquires a clear negative slope on extreme pushes — "
+            "the multi-week trend regime."
+        ),
+        slide_no=18, total=TOTAL,
+    )
+    # 19 — Push-response combined diagram (the report figure)
+    slide_image_full(
+        prs,
+        title="Evidence — Push-Response at the optimal horizon (TY vs BTC)",
+        section="Diagnostics",
+        image=FIG_REPORT / "fig_push_response.png",
+        caption=(
+            "Conditional mean response per push-decile with bin-level standard errors at the *optimal* horizon "
+            "for each market. TY at q = 1 440 bars (~18 sessions): Spearman ρ ≈ +0.59 (p ≈ 0.06). "
+            "BTC at q = 3 456 bars (~12 days): ρ ≈ +0.67 (p ≈ 0.02). These horizons drive the walk-forward picks of L*."
+        ),
+        slide_no=19, total=TOTAL,
+    )
 
-    # ----- Strategy & walk-forward (16-17) -----
-    slide_strategy_mechanics(prs, 16, TOTAL)
-    slide_walkforward(prs, 17, TOTAL)
+    # ----- Strategy & walk-forward (20-21) -----
+    slide_strategy_mechanics(prs, 20, TOTAL)
+    slide_walkforward(prs, 21, TOTAL)
 
-    # ----- Performance section (18-32) -----
+    # ----- Performance section (22-37) -----
     slide_section_divider(prs, label="Out-of-Sample Performance",
                           big="Walk-forward results for both markets",
-                          slide_no=18, total=TOTAL)
-    slide_metrics_table(prs, 19, TOTAL)
+                          slide_no=22, total=TOTAL)
+    slide_metrics_table(prs, 23, TOTAL)
     slide_image_full(
         prs,
         title="TY — out-of-sample equity & portfolio position",
@@ -887,7 +943,7 @@ def main() -> None:
             "Net OOS profit $68 336 / Max DD $15 865 / Return on Account 4.31× / Sharpe 0.31 / 395 trades. "
             "Position panel shows long/short/flat state at bar resolution."
         ),
-        slide_no=20, total=TOTAL,
+        slide_no=24, total=TOTAL,
     )
     slide_image_full(
         prs,
@@ -899,19 +955,32 @@ def main() -> None:
             "CDD(α=0.05) ≈ $13.3k indicates the worst 5% of drawdown bars are concentrated near the max. "
             "Long underwater stretches are structural for a 1.5%/yr trend-following bond strategy."
         ),
-        slide_no=21, total=TOTAL,
+        slide_no=25, total=TOTAL,
+    )
+    # NEW — % return distribution for TY (replaces the dollar-PnL hist on the deck)
+    slide_image_full(
+        prs,
+        title="TY — out-of-sample trade % return distribution",
+        section="Primary Market — TY",
+        image=FIG_PRES / "repl_ty_pct_returns.png",
+        caption=(
+            "Per-trade % returns — left panel = price-move % captured per trade; right panel = "
+            "equity-return % per trade (PnL / $100k). Mean equity-return per trade is −0.18% (small "
+            "losing tail of −2.95%); winners reach +8.17% on the COVID flight-to-safety long."
+        ),
+        slide_no=26, total=TOTAL,
     )
     slide_image_full(
         prs,
-        title="TY — out-of-sample trade PnL distribution",
+        title="TY — out-of-sample dollar-PnL distribution",
         section="Primary Market — TY",
         image=FIG_PRES / "slide_04_ty_trade_distribution.png",
         caption=(
-            "Win rate 33% but average winner $1 265 vs average loser −$897 — classic right-skewed "
-            "breakout payoff. Profit factor 0.70 because the system loses small and wins large; "
-            "the assignment-mandated Net P / Max DD objective is what we optimise against (4.31×)."
+            "Same trades shown in dollar terms. Win rate 33%, average winner $1 265 vs average loser −$897. "
+            "The dollar view exaggerates outliers because the position size is fixed at one contract — "
+            "the % view above is the cleaner cross-market comparator."
         ),
-        slide_no=22, total=TOTAL,
+        slide_no=27, total=TOTAL,
     )
     slide_image_full(
         prs,
@@ -923,7 +992,7 @@ def main() -> None:
             "Channel breakout above the 1 920-bar high right as COVID drove a flight-to-safety bond rally. "
             "Trailing-equity stop fired after the initial impulse decayed — textbook trend payoff."
         ),
-        slide_no=23, total=TOTAL,
+        slide_no=28, total=TOTAL,
     )
     slide_image_full(
         prs,
@@ -939,7 +1008,7 @@ def main() -> None:
             "The push-response diagnostic for short horizons is near zero; some breakouts get faded.",
         ],
         caption="Source: Group 1 walk-forward (TF Data 5-min OHLC, $100k initial equity)",
-        slide_no=24, total=TOTAL,
+        slide_no=29, total=TOTAL,
     )
     slide_image_full(
         prs,
@@ -951,12 +1020,12 @@ def main() -> None:
             "Drawdown stop S almost always at 1% of running equity. Optimiser does not flip wildly — "
             "the chosen objective (Net Profit / Max Drawdown) is well-behaved on TY."
         ),
-        slide_no=25, total=TOTAL,
+        slide_no=30, total=TOTAL,
     )
 
     slide_section_divider(prs, label="Secondary Market — BTC",
                           big="Same framework, faster horizon",
-                          slide_no=26, total=TOTAL)
+                          slide_no=31, total=TOTAL)
 
     slide_image_full(
         prs,
@@ -968,7 +1037,7 @@ def main() -> None:
             "OOS windows. Net OOS profit $536 397 / Max DD $131 729 / Return on Account 4.07× / "
             "Sharpe 3.01 / 1 094 trades. Equity grows from $100k to $636k driven by the 2024-25 cycle."
         ),
-        slide_no=27, total=TOTAL,
+        slide_no=32, total=TOTAL,
     )
     slide_image_full(
         prs,
@@ -980,11 +1049,24 @@ def main() -> None:
             "months. CDD(α=0.05) ≈ $111.8k. Larger absolute dollar swings than TY, but realised "
             "vol is ~8× higher so the % drawdown footprint is comparable."
         ),
-        slide_no=28, total=TOTAL,
+        slide_no=33, total=TOTAL,
+    )
+    # NEW — % return distribution for BTC
+    slide_image_full(
+        prs,
+        title="BTC — out-of-sample trade % return distribution",
+        section="Secondary Market — BTC",
+        image=FIG_PRES / "repl_btc_pct_returns.png",
+        caption=(
+            "Per-trade % returns — left panel = price-move % captured; right panel = equity-return %. "
+            "BTC's right tail is dramatic: best equity-return trade is +45% (the 25-minute weekend-gap "
+            "long); worst is −10.6% (the channel-break short that BTC pumped through). Mean is +0.49%."
+        ),
+        slide_no=34, total=TOTAL,
     )
     slide_image_full(
         prs,
-        title="BTC — out-of-sample trade PnL distribution",
+        title="BTC — out-of-sample dollar-PnL distribution",
         section="Secondary Market — BTC",
         image=FIG_PRES / "slide_04_btc_trade_distribution.png",
         caption=(
@@ -992,7 +1074,7 @@ def main() -> None:
             "but with a higher hit rate. Profit factor 1.37. The intraday push-response is positive "
             "at the right horizons, supporting the higher hit rate."
         ),
-        slide_no=29, total=TOTAL,
+        slide_no=35, total=TOTAL,
     )
     slide_image_full(
         prs,
@@ -1004,7 +1086,7 @@ def main() -> None:
             "Channel break above the 276-bar (1-day) high; weekend gap aligned with the breakout direction. "
             "$9 028 price move × $5 BTC point value − $25 round-turn slippage = +$45 115 in 5 bars."
         ),
-        slide_no=30, total=TOTAL,
+        slide_no=36, total=TOTAL,
     )
     slide_image_full(
         prs,
@@ -1021,7 +1103,7 @@ def main() -> None:
             "The −$10 600 loss is ≈ 8% of the OOS Max DD — paid once to stay in the longer-horizon trend regime.",
         ],
         caption="Source: Group 1 walk-forward (TF Data 5-min OHLC, $100k initial equity)",
-        slide_no=31, total=TOTAL,
+        slide_no=37, total=TOTAL,
     )
     slide_image_full(
         prs,
@@ -1033,10 +1115,10 @@ def main() -> None:
             "Optimiser cycles between L = 276 (1 day) in choppy regimes and L = 1 104 (4 days) in the "
             "late-2025 trend phase. S* fixed at 1%. Instability is structural — BTC's regime is shifting."
         ),
-        slide_no=32, total=TOTAL,
+        slide_no=38, total=TOTAL,
     )
 
-    # ----- Robustness + close (33-35) -----
+    # ----- Robustness + close (39-41) -----
     slide_image_full(
         prs,
         title="In-sample vs out-of-sample decay",
@@ -1048,10 +1130,10 @@ def main() -> None:
             "truncated the most explosive late-2024 trends — sample-specific, not a forward claim). "
             "Quarterly OOS hit rate: TY 54.8% (85/155), BTC 100% (7/7)."
         ),
-        slide_no=33, total=TOTAL,
+        slide_no=39, total=TOTAL,
     )
-    slide_conclusion(prs, 34, TOTAL)
-    slide_appendix(prs, 35, TOTAL)
+    slide_conclusion(prs, 40, TOTAL)
+    slide_appendix(prs, 41, TOTAL)
 
     print(f"final: {len(prs.slides)} slides")
     OUT.parent.mkdir(parents=True, exist_ok=True)
