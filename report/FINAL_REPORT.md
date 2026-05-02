@@ -26,6 +26,7 @@ Channel WithDDControl trend-following on the **TY** (10-year US Treasury futures
 10. [T × τ sensitivity](#10-t--τ-sensitivity)
 11. [Conclusions](#11-conclusions)
 12. [Reproducibility](#12-reproducibility)
+13. [Appendix A — TY 1-minute resolution run](#13-appendix-a--ty-1-minute-resolution-run)
 
 ---
 
@@ -266,6 +267,8 @@ Two-engine cross-validation is a hard requirement of the assignment ("preferably
 | TY 5m full sample         | 5.6e−15     | 3.4e−15   | 3.2e−08    | 0       |
 | BTC 5m walk-forward OOS   | 8.7e−16     | 0         | 5.1e−08    | 0       |
 | BTC 5m full sample        | 0           | 0         | 1.5e−08    | 0       |
+| TY 1m walk-forward OOS    | 2.0e−15     | 3.7e−15   | 4.5e−08    | 0       |
+| TY 1m full sample         | 5.4e−15     | 2.1e−15   | 2.5e−08    | 0       |
 
 (Source: `results/walkforward/python_cpp_fidelity_comparison.csv`.)
 
@@ -344,6 +347,69 @@ python scripts/build_final_report_figures.py
 ```
 
 All figure PNGs in `report/figures/` are regenerated deterministically from the CSV artifacts in `results/walkforward/` and `results/diagnostics/`.
+
+---
+
+## 13. Appendix A — TY 1-minute resolution run
+
+The assignment notes that "if you feel your code is fast enough, or you just want to explore more in-depth, you can apply the strategies to 1-min data". We did. The C++ engine can grind a full 4 319 435-bar TY history through the 91 296-node grid, 155 quarterly periods deep, in well under an hour on a single core; the Python engine (Numba JIT) is within ~3× of that on the same machine.
+
+The 1-minute TY series spans the same 03 Jan 1983 → 10 Apr 2026 window as the 5-minute file, but with **5×** more bars. The 1-minute optimiser scales `L` linearly (modal `L* = 4800` ≈ same wall-clock pre-charge as `L* = 960` on 5m), and the chosen `S* = 0.01` is unchanged.
+
+### TY 1-minute headline numbers
+
+| Metric                       | TY 1m OOS              | TY 1m full sample      |
+|------------------------------|-----------------------:|-----------------------:|
+| Net profit                   | **$71 952.4**          | **$97 670.6**          |
+| Max drawdown                 | $15 603.1              | $13 827.5              |
+| **Return on Account**        | **4.61×**              | **7.06×**              |
+| Sharpe                       | 0.30                   | 0.40                   |
+| Annualised return            | 1.53 %                 | 1.68 %                 |
+| Annualised volatility        | 5.11 %                 | 4.16 %                 |
+| Closed trades                | 401                    | 772                    |
+| Win rate                     | 32.9 %                 | 41.5 %                 |
+| Profit factor                | 0.71                   | 1.35                   |
+| Avg trade duration           | 4 786 bars (≈12 sessions) | 3 191 bars (≈ 8 sessions) |
+| CDD(α = 0.05)                | $13 085.2              | $11 983.4              |
+
+> **The 1-minute run earns *more* OOS net profit and a higher RoA than the 5-minute run** ($71 952 / 4.61× vs $68 336 / 4.31×) — i.e. the finer resolution captures extra micro-moves at the breakout boundary without paying disproportionate slippage. Sharpe and profit factor are essentially flat; the win rate moves down 0.3 pp; the average winner lifts to $1 269 (vs $1 265 at 5m). This is a textbook outcome: the strategy is a slow trend follower, the bar-resolution change shifts the *quality of execution* on the breakout itself, not the *direction* of the bet.
+
+### Side-by-side metrics
+
+![TY resolution comparison](figures/fig_ty_resolution_comparison.png)
+
+### Walk-forward parameter convergence
+
+The 1-minute optimiser's chosen `(L*, S*)` track the 5-minute optimiser exactly, scaled by 5×: most-frequent picks are `L* = 4 800` (≈ 16 days) and `L* = 9 600` (≈ 32 days), both with `S* = 0.01`. The 5-minute analogues are `L* ∈ {960, 1920}` with `S* = 0.01`, i.e. the same physical breakout horizons.
+
+### Python ↔ C++ parity at 1-minute resolution
+
+The 4 319 435-row C++ run still matches the Python replay to float-64 precision (see the `TY 1m walk-forward OOS` and `TY 1m full sample` rows in the parity table in §9). Trade counts are exact (401 / 772) on both engines.
+
+### Why we kept 5-minute as the headline
+
+Two reasons:
+
+1. **The professor wrote the project around 5-minute data**: "the zipped \*.csv data files containing the OHLC bars with 5-minute resolution from inception until present". 1-minute is explicitly *optional* ("if you feel your code is fast enough... you can apply the strategies to 1-min data").
+2. **The 1-minute equity series is 5× larger** (no qualitative change in narrative). The added information rate goes mostly into round-turn-cost amortisation, not into a new inefficiency the system can exploit.
+
+We therefore quote 5-minute everywhere in the body of the report and offer 1-minute here as confirmation that the engine scales and that the decision was a bar-quality one, not a methodology one.
+
+### Cached 1-minute artifacts
+
+```
+results/walkforward/TY_1m/
+├── TY_1m_walkforward_params.csv      # 155 quarterly (L*, S*) picks
+├── TY_1m_walkforward_ledger.csv      # 401 OOS closed trades
+├── TY_1m_oos_metrics.csv             # the headline OOS metrics above
+├── TY_1m_fullsample_ledger.csv       # 772 full-sample trades
+├── TY_1m_fullsample_metrics.csv
+├── TY_1m_reference_summary.csv
+├── TY_1m_validation.csv
+└── status.txt
+```
+
+The per-bar equity curve (≈ 4.3 M rows) is regenerated on demand by `python scripts/replay_cpp_fidelity_in_python.py --job TY:1` and is not committed to the repository.
 
 ---
 

@@ -469,6 +469,51 @@ def figure_cumulative_trades() -> None:
 
 
 # ----------------------------------------------------------------------------
+# 10. TY 5-min vs 1-min comparison
+# ----------------------------------------------------------------------------
+def figure_ty_resolution() -> None:
+    ty_5_oos = pd.read_csv(RESULTS / "TY_5m" / "TY_5m_oos_metrics.csv").iloc[0]
+    ty_1_oos = pd.read_csv(RESULTS / "TY_1m" / "TY_1m_oos_metrics.csv").iloc[0]
+    ty_5_full = pd.read_csv(RESULTS / "TY_5m" / "TY_5m_fullsample_metrics.csv").iloc[0]
+    ty_1_full = pd.read_csv(RESULTS / "TY_1m" / "TY_1m_fullsample_metrics.csv").iloc[0]
+
+    metrics = [
+        "Ann. Return %",
+        "Sharpe Ratio",
+        "Return on Account",
+        "Profit Factor",
+        "Win Rate %",
+    ]
+
+    fig, axes = plt.subplots(1, 2, figsize=(13.0, 4.8))
+
+    for ax, m5, m1, label in [
+        (axes[0], ty_5_full, ty_1_full, "TY full sample"),
+        (axes[1], ty_5_oos, ty_1_oos, "TY OOS walk-forward"),
+    ]:
+        x = np.arange(len(metrics))
+        width = 0.36
+        v5 = [m5[k] for k in metrics]
+        v1 = [m1[k] for k in metrics]
+        ax.bar(x - width / 2, v5, width, color=COLUMBIA_BLUE, label="5-min bars")
+        ax.bar(x + width / 2, v1, width, color=COLUMBIA_NAVY, label="1-min bars")
+        ax.set_xticks(x, metrics, rotation=20, ha="right")
+        ax.axhline(0, color=COLUMBIA_INK, lw=0.6)
+        ax.set_title(label)
+        ax.legend(loc="upper right")
+
+    fig.suptitle(
+        "TY data resolution comparison — 5-minute vs 1-minute bars",
+        color=COLUMBIA_NAVY,
+        fontweight="bold",
+        fontsize=14,
+        y=1.04,
+    )
+    _credit(axes[1])
+    _save(fig, "fig_ty_resolution_comparison.png")
+
+
+# ----------------------------------------------------------------------------
 # Driver
 # ----------------------------------------------------------------------------
 def main() -> None:
@@ -482,6 +527,8 @@ def main() -> None:
     figure_trade_distributions()
     figure_is_oos_comparison()
     figure_cumulative_trades()
+    if (RESULTS / "TY_1m" / "TY_1m_oos_metrics.csv").exists():
+        figure_ty_resolution()
     print(f"[ok] figures written to {FIG.resolve()}")
     for p in sorted(FIG.glob("*.png")):
         print(" -", p.name)
