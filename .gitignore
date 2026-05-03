@@ -18,8 +18,6 @@ venv/
 .vscode/
 .idea/
 
-# --- Claude Code workspace ---
-.claude/
 
 # --- C++ build artifacts ---
 cpp/build/
